@@ -13,7 +13,12 @@ export type RuleId =
   | "noShadowing"
   | "noUnreachableCode"
   | "noStringByValueParam"
-  | "noImplicitFloatToInt";
+  | "noImplicitFloatToInt"
+  | "noDeadStore"
+  | "noDuplicateIncludes"
+  | "noDuplicateImports"
+  | "preferConstLocals"
+  | "noRiskyHandleCast";
 
 export interface RuleConfig {
   enable: boolean;

@@ -6,7 +6,7 @@
   "publisher": "ar",
   "license": "Unlicense",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.108.0"
   },
   "categories": [
     "Programming Languages"
@@ -172,6 +172,61 @@
           "default": "warning",
           "enum": ["error", "warning", "info", "hint"],
           "description": "Severity for implicit float-to-int diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noDeadStore.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag assignments whose values are overwritten before being read."
+        },
+        "openplanetAngelscriptLinter.rules.noDeadStore.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for dead-store diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noDuplicateIncludes.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag duplicate #include declarations."
+        },
+        "openplanetAngelscriptLinter.rules.noDuplicateIncludes.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for duplicate-include diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noDuplicateImports.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag duplicate import declarations."
+        },
+        "openplanetAngelscriptLinter.rules.noDuplicateImports.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for duplicate-import diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.preferConstLocals.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag initialized locals that are never reassigned and should be const."
+        },
+        "openplanetAngelscriptLinter.rules.preferConstLocals.severity": {
+          "type": "string",
+          "default": "info",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for const-correctness diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noRiskyHandleCast.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag cast<...@>(...) handle casts that should be null-guarded."
+        },
+        "openplanetAngelscriptLinter.rules.noRiskyHandleCast.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for risky handle-cast diagnostics."
         }
       }
     }
@@ -180,6 +235,8 @@
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
     "test": "npm run -s compile && node out/test/runLinterTests.js",
+    "test:updateSnapshot": "npm run -s compile && node out/test/runLinterTests.js --update-snapshot",
+    "release:verify": "npm run -s test",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {

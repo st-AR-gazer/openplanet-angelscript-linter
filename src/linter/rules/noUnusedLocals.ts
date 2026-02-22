@@ -1,5 +1,8 @@
 import { createRange } from "../range";
-import { countIdentifierMatches, collectFunctionModels } from "../functionModel";
+import {
+  collectFunctionModels,
+  isScopeSelfOrDescendant
+} from "../functionModel";
 import type { LintIssue, LintRule, LintRuleContext } from "../types";
 
 export const noUnusedLocalsRule: LintRule = {
@@ -15,9 +18,14 @@ export const noUnusedLocalsRule: LintRule = {
           continue;
         }
 
-        const localRelativeEnd = Math.max(0, local.endOffset - fn.bodyStartOffset);
-        const trailingBody = fn.bodyText.slice(localRelativeEnd);
-        if (countIdentifierMatches(trailingBody, local.name) > 0) {
+        const hasRead = fn.events.some(
+          (event) =>
+            event.name === local.name &&
+            event.kind === "read" &&
+            event.startOffset > local.endOffset &&
+            isScopeSelfOrDescendant(fn.scopes, event.scopeId, local.scopeId)
+        );
+        if (hasRead) {
           continue;
         }
 
@@ -30,7 +38,17 @@ export const noUnusedLocalsRule: LintRule = {
             local.character,
             local.line,
             local.character + local.name.length
-          )
+          ),
+          fix: {
+            title: `Prefix "${local.name}" with '_'`,
+            range: createRange(
+              local.line,
+              local.character,
+              local.line,
+              local.character + local.name.length
+            ),
+            newText: `_${local.name}`
+          }
         });
       }
     }

@@ -1,0 +1,177 @@
+{
+  "totalFiles": 2,
+  "totalIssues": 15,
+  "aggregateRuleCounts": {
+    "noTodoComments": 0,
+    "noDebugCalls": 1,
+    "noAutoType": 0,
+    "noEmptyCatch": 0,
+    "noEmptyControlBody": 0,
+    "noUnusedLocals": 3,
+    "noUnusedParams": 1,
+    "noShadowing": 0,
+    "noUnreachableCode": 1,
+    "noStringByValueParam": 1,
+    "noImplicitFloatToInt": 0,
+    "noDeadStore": 2,
+    "noDuplicateIncludes": 1,
+    "noDuplicateImports": 1,
+    "preferConstLocals": 3,
+    "noRiskyHandleCast": 1
+  },
+  "files": [
+    {
+      "fileName": "file-a.as",
+      "totalIssues": 10,
+      "ruleCounts": {
+        "noTodoComments": 0,
+        "noDebugCalls": 1,
+        "noAutoType": 0,
+        "noEmptyCatch": 0,
+        "noEmptyControlBody": 0,
+        "noUnusedLocals": 2,
+        "noUnusedParams": 1,
+        "noShadowing": 0,
+        "noUnreachableCode": 1,
+        "noStringByValueParam": 1,
+        "noImplicitFloatToInt": 0,
+        "noDeadStore": 2,
+        "noDuplicateIncludes": 1,
+        "noDuplicateImports": 0,
+        "preferConstLocals": 1,
+        "noRiskyHandleCast": 0
+      },
+      "issues": [
+        {
+          "ruleId": "noDuplicateIncludes",
+          "severity": "warning",
+          "message": "Duplicate #include path \"Core/Utils.as\" (already included on line 1).",
+          "line": 1,
+          "character": 0
+        },
+        {
+          "ruleId": "noStringByValueParam",
+          "severity": "warning",
+          "message": "Parameter \"msg\" passes string by value. Prefer \"const string &in msg\".",
+          "line": 3,
+          "character": 18
+        },
+        {
+          "ruleId": "noUnusedParams",
+          "severity": "info",
+          "message": "Parameter \"unused\" is never used.",
+          "line": 3,
+          "character": 27
+        },
+        {
+          "ruleId": "noDeadStore",
+          "severity": "warning",
+          "message": "Value assigned to \"keep\" is overwritten before being read.",
+          "line": 4,
+          "character": 6
+        },
+        {
+          "ruleId": "noUnusedLocals",
+          "severity": "warning",
+          "message": "Local \"keep\" is never used.",
+          "line": 4,
+          "character": 6
+        },
+        {
+          "ruleId": "noDeadStore",
+          "severity": "warning",
+          "message": "Value assigned to \"keep\" is overwritten before being read.",
+          "line": 5,
+          "character": 2
+        },
+        {
+          "ruleId": "noDebugCalls",
+          "severity": "warning",
+          "message": "Debug call \"print(...)\" found.",
+          "line": 7,
+          "character": 2
+        },
+        {
+          "ruleId": "noUnreachableCode",
+          "severity": "warning",
+          "message": "Unreachable code detected.",
+          "line": 9,
+          "character": 2
+        },
+        {
+          "ruleId": "noUnusedLocals",
+          "severity": "warning",
+          "message": "Local \"after\" is never used.",
+          "line": 9,
+          "character": 6
+        },
+        {
+          "ruleId": "preferConstLocals",
+          "severity": "info",
+          "message": "Local \"after\" is never reassigned. Prefer const-correctness.",
+          "line": 9,
+          "character": 6
+        }
+      ]
+    },
+    {
+      "fileName": "file-b.as",
+      "totalIssues": 5,
+      "ruleCounts": {
+        "noTodoComments": 0,
+        "noDebugCalls": 0,
+        "noAutoType": 0,
+        "noEmptyCatch": 0,
+        "noEmptyControlBody": 0,
+        "noUnusedLocals": 1,
+        "noUnusedParams": 0,
+        "noShadowing": 0,
+        "noUnreachableCode": 0,
+        "noStringByValueParam": 0,
+        "noImplicitFloatToInt": 0,
+        "noDeadStore": 0,
+        "noDuplicateIncludes": 0,
+        "noDuplicateImports": 1,
+        "preferConstLocals": 2,
+        "noRiskyHandleCast": 1
+      },
+      "issues": [
+        {
+          "ruleId": "noDuplicateImports",
+          "severity": "warning",
+          "message": "Duplicate import declaration from \"Companion\" (already declared on line 1).",
+          "line": 1,
+          "character": 0
+        },
+        {
+          "ruleId": "preferConstLocals",
+          "severity": "info",
+          "message": "Local \"j\" is never reassigned. Prefer const-correctness.",
+          "line": 4,
+          "character": 18
+        },
+        {
+          "ruleId": "noUnusedLocals",
+          "severity": "warning",
+          "message": "Local \"handle\" is never used.",
+          "line": 7,
+          "character": 10
+        },
+        {
+          "ruleId": "preferConstLocals",
+          "severity": "info",
+          "message": "Local \"handle\" is never reassigned. Prefer const-correctness.",
+          "line": 7,
+          "character": 10
+        },
+        {
+          "ruleId": "noRiskyHandleCast",
+          "severity": "warning",
+          "message": "Handle cast \"cast<MyType@>(...)\" may return null; guard usages explicitly.",
+          "line": 7,
+          "character": 19
+        }
+      ]
+    }
+  ]
+}

@@ -18,6 +18,7 @@ export function scanDocument(text: string): ScannedDocument {
     for (let column = 0; column < rawText.length; ) {
       const current = rawText[column];
       const next = rawText[column + 1];
+      const previous = column > 0 ? rawText[column - 1] : "";
 
       if (inBlockComment) {
         codeChars[column] = " ";
@@ -48,6 +49,16 @@ export function scanDocument(text: string): ScannedDocument {
         codeChars[column + 1] = " ";
         column += 2;
         inBlockComment = true;
+        continue;
+      }
+
+      if (
+        (current === "n" || current === "f" || current === "N" || current === "F") &&
+        (next === "\"" || next === "'") &&
+        !isIdentifierPart(previous)
+      ) {
+        codeChars[column] = " ";
+        column += 1;
         continue;
       }
 
@@ -136,4 +147,8 @@ export function positionFromOffset(
     line,
     character
   };
+}
+
+function isIdentifierPart(ch: string): boolean {
+  return /[A-Za-z0-9_]/.test(ch);
 }

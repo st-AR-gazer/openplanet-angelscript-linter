@@ -46,7 +46,17 @@ export const noShadowingRule: LintRule = {
               local.character,
               local.line,
               local.character + local.name.length
-            )
+            ),
+            fix: {
+              title: `Rename "${local.name}" to "_${local.name}"`,
+              range: createRange(
+                local.line,
+                local.character,
+                local.line,
+                local.character + local.name.length
+              ),
+              newText: `_${local.name}`
+            }
           });
         }
 

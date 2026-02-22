@@ -1,5 +1,6 @@
 import { collectFunctionModels, isStringTypeText } from "../functionModel";
 import { createRange } from "../range";
+import { positionFromOffset } from "../scan";
 import type { LintIssue, LintRule, LintRuleContext } from "../types";
 
 export const noStringByValueParamRule: LintRule = {
@@ -23,6 +24,14 @@ export const noStringByValueParamRule: LintRule = {
         if (parameter.rawText.includes("&")) {
           continue;
         }
+        const parameterStart = positionFromOffset(
+          context.scan,
+          parameter.parameterStartOffset
+        );
+        const parameterEnd = positionFromOffset(
+          context.scan,
+          parameter.parameterEndOffset
+        );
 
         issues.push({
           ruleId: this.id,
@@ -33,7 +42,17 @@ export const noStringByValueParamRule: LintRule = {
             parameter.character,
             parameter.line,
             parameter.character + parameter.name.length
-          )
+          ),
+          fix: {
+            title: `Rewrite "${parameter.name}" as const string &in`,
+            range: createRange(
+              parameterStart.line,
+              parameterStart.character,
+              parameterEnd.line,
+              parameterEnd.character
+            ),
+            newText: `const string &in ${parameter.name}`
+          }
         });
       }
     }

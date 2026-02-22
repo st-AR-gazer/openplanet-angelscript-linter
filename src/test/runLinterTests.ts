@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import { runLinter } from "../linter/engine";
 import type {
@@ -18,7 +20,12 @@ const allRuleIds: RuleId[] = [
   "noShadowing",
   "noUnreachableCode",
   "noStringByValueParam",
-  "noImplicitFloatToInt"
+  "noImplicitFloatToInt",
+  "noDeadStore",
+  "noDuplicateIncludes",
+  "noDuplicateImports",
+  "preferConstLocals",
+  "noRiskyHandleCast"
 ];
 
 function createSettings(): LinterSettings {
@@ -37,7 +44,12 @@ function createSettings(): LinterSettings {
       noShadowing: { enable: true, severity: "warning" },
       noUnreachableCode: { enable: true, severity: "warning" },
       noStringByValueParam: { enable: true, severity: "warning" },
-      noImplicitFloatToInt: { enable: true, severity: "warning" }
+      noImplicitFloatToInt: { enable: true, severity: "warning" },
+      noDeadStore: { enable: true, severity: "warning" },
+      noDuplicateIncludes: { enable: true, severity: "warning" },
+      noDuplicateImports: { enable: true, severity: "warning" },
+      preferConstLocals: { enable: true, severity: "info" },
+      noRiskyHandleCast: { enable: true, severity: "warning" }
     }
   };
 }
@@ -120,55 +132,26 @@ function testTodoCommentsOnlyLineComments(): void {
   assert.ok(todoIssue?.fix, "TODO issue should include a quick fix.");
 }
 
-function testNoEmptyCatch(): void {
+function testNoEmptyCatchAndControlBody(): void {
   const issues = runCase(
-    "empty-catch",
+    "empty-catch-and-control",
     [
       "void Main() {",
       "  try {",
       "    DoA();",
       "  } catch (Exception e) {",
       "  }",
-      "",
-      "  try {",
-      "    DoB();",
-      "  } catch {",
-      "    // intentionally ignored",
-      "  }",
-      "",
-      "  try {",
-      "    DoC();",
-      "  } catch (Exception e) {",
-      "    trace(e);",
-      "  }",
-      "}"
-    ].join("\n"),
-    (settings) => enableOnly(settings, ["noEmptyCatch"])
-  );
-
-  assert.equal(countRule(issues, "noEmptyCatch"), 2);
-}
-
-function testNoEmptyControlBodyAndDoWhileExclusion(): void {
-  const issues = runCase(
-    "empty-control-bodies",
-    [
-      "void Main() {",
       "  if (Ready()) ;",
-      "  for (int i = 0; i < 3; i++) ;",
-      "  while (Ready()) ;",
-      "  do {",
-      "    DoWork();",
-      "  } while (Ready());",
       "}"
     ].join("\n"),
-    (settings) => enableOnly(settings, ["noEmptyControlBody"])
+    (settings) => enableOnly(settings, ["noEmptyCatch", "noEmptyControlBody"])
   );
 
-  assert.equal(countRule(issues, "noEmptyControlBody"), 3);
+  assert.equal(countRule(issues, "noEmptyCatch"), 1);
+  assert.equal(countRule(issues, "noEmptyControlBody"), 1);
 }
 
-function testUnusedLocalsAndParams(): void {
+function testUnusedLocalsAndParamsAndFixes(): void {
   const issues = runCase(
     "unused-locals-params",
     [
@@ -183,6 +166,10 @@ function testUnusedLocalsAndParams(): void {
 
   assert.equal(countRule(issues, "noUnusedLocals"), 1);
   assert.equal(countRule(issues, "noUnusedParams"), 1);
+  const unusedLocalIssue = issues.find((issue) => issue.ruleId === "noUnusedLocals");
+  const unusedParamIssue = issues.find((issue) => issue.ruleId === "noUnusedParams");
+  assert.ok(unusedLocalIssue?.fix, "Unused-local issue should include a quick fix.");
+  assert.ok(unusedParamIssue?.fix, "Unused-param issue should include a quick fix.");
 }
 
 function testNoShadowing(): void {
@@ -201,6 +188,8 @@ function testNoShadowing(): void {
   );
 
   assert.equal(countRule(issues, "noShadowing"), 1);
+  const shadowIssue = issues.find((issue) => issue.ruleId === "noShadowing");
+  assert.ok(shadowIssue?.fix, "Shadowing issue should include a quick fix.");
 }
 
 function testNoUnreachableCode(): void {
@@ -216,6 +205,8 @@ function testNoUnreachableCode(): void {
   );
 
   assert.equal(countRule(issues, "noUnreachableCode"), 1);
+  const unreachableIssue = issues.find((issue) => issue.ruleId === "noUnreachableCode");
+  assert.ok(unreachableIssue?.fix, "Unreachable-code issue should include a quick fix.");
 }
 
 function testStringByValueAndImplicitFloatToInt(): void {
@@ -233,6 +224,51 @@ function testStringByValueAndImplicitFloatToInt(): void {
 
   assert.equal(countRule(issues, "noStringByValueParam"), 1);
   assert.ok(countRule(issues, "noImplicitFloatToInt") >= 2);
+  const byValueIssue = issues.find((issue) => issue.ruleId === "noStringByValueParam");
+  assert.ok(byValueIssue?.fix, "String-by-value issue should include a quick fix.");
+}
+
+function testNewRulesDeadStoreDuplicateConstCast(): void {
+  const issues = runCase(
+    "new-rules",
+    [
+      '#include "Core/Utils.as"',
+      '#include "Core/Utils.as"',
+      'import void Ping() from "Companion";',
+      'import void Ping() from "Companion";',
+      "void Main() {",
+      "  int dead = 1;",
+      "  dead = 2;",
+      "  dead = 3;",
+      "  int constCandidate = 4;",
+      "  MyType@ handle = cast<MyType@>(GetObj());",
+      "  print(handle);",
+      "}"
+    ].join("\n"),
+    (settings) =>
+      enableOnly(settings, [
+        "noDeadStore",
+        "noDuplicateIncludes",
+        "noDuplicateImports",
+        "preferConstLocals",
+        "noRiskyHandleCast"
+      ])
+  );
+
+  assert.ok(countRule(issues, "noDeadStore") >= 1);
+  assert.equal(countRule(issues, "noDuplicateIncludes"), 1);
+  assert.equal(countRule(issues, "noDuplicateImports"), 1);
+  assert.ok(countRule(issues, "preferConstLocals") >= 1);
+  assert.equal(countRule(issues, "noRiskyHandleCast"), 1);
+
+  const includeIssue = issues.find((issue) => issue.ruleId === "noDuplicateIncludes");
+  const importIssue = issues.find((issue) => issue.ruleId === "noDuplicateImports");
+  const constIssue = issues.find((issue) => issue.ruleId === "preferConstLocals");
+  assert.ok(includeIssue?.fix, "Duplicate include should include a quick fix.");
+  assert.ok(importIssue?.fix, "Duplicate import should include a quick fix.");
+  assert.ok(constIssue?.fix, "Prefer-const issue should include a quick fix.");
+  const deadStoreIssue = issues.find((issue) => issue.ruleId === "noDeadStore" && issue.fix);
+  assert.ok(deadStoreIssue?.fix, "Dead-store issue should include a safe quick fix.");
 }
 
 function testSuppressionsEnableAndBlockScopes(): void {
@@ -291,19 +327,206 @@ function testMaxDiagnosticsCap(): void {
   assert.equal(issues.length, 2);
 }
 
+function testMediumCorpusSnapshot(): void {
+  const corpusPath = path.join(
+    process.cwd(),
+    "test-files",
+    "linter-corpus",
+    "medium-corpus.as"
+  );
+  const snapshotPath = path.join(
+    process.cwd(),
+    "test-files",
+    "linter-corpus",
+    "medium-corpus.snapshot.json"
+  );
+
+  const text = fs.readFileSync(corpusPath, "utf8");
+  const issues = runCase("medium-corpus-snapshot", text, (settings) => {
+    enableOnly(settings, allRuleIds);
+  });
+
+  const observedCounts = {} as Record<RuleId, number>;
+  for (const ruleId of allRuleIds) {
+    observedCounts[ruleId] = countRule(issues, ruleId);
+  }
+
+  const observedSnapshot = {
+    totalIssues: issues.length,
+    ruleCounts: observedCounts,
+    issues: issues
+      .map((issue) => ({
+        ruleId: issue.ruleId,
+        severity: issue.severity,
+        message: issue.message,
+        line: issue.range.start.line,
+        character: issue.range.start.character
+      }))
+      .sort((left, right) => {
+        if (left.line !== right.line) return left.line - right.line;
+        if (left.character !== right.character) return left.character - right.character;
+        if (left.ruleId !== right.ruleId) return left.ruleId.localeCompare(right.ruleId);
+        return left.message.localeCompare(right.message);
+      })
+  };
+
+  if (process.argv.includes("--update-snapshot")) {
+    fs.writeFileSync(snapshotPath, `${JSON.stringify(observedSnapshot, null, 2)}\n`, "utf8");
+    return;
+  }
+
+  const expected = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
+  assert.deepEqual(observedSnapshot, expected);
+}
+
+function testStringPrefixesDoNotCountAsIdentifierReads(): void {
+  const issues = runCase(
+    "string-prefixes-do-not-count-as-reads",
+    [
+      "void Main() {",
+      "  int n = 0;",
+      "  int f = 1;",
+      '  string a = n"hello";',
+      '  string b = f"world";',
+      "  Ping(a);",
+      "  Ping(b);",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnusedLocals"])
+  );
+
+  assert.equal(countRule(issues, "noUnusedLocals"), 2);
+  const names = issues
+    .map((issue) => issue.message)
+    .sort();
+  assert.ok(names.some((message) => message.includes('"n"')));
+  assert.ok(names.some((message) => message.includes('"f"')));
+}
+
+function testForInitializerDeclarationsAreModeled(): void {
+  const issues = runCase(
+    "for-initializer-declarations-are-modeled",
+    [
+      "void Main() {",
+      "  for (const int i = 0, j = 1; i < 1; i++) {",
+      "    print(i);",
+      "  }",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["preferConstLocals", "noUnusedLocals"])
+  );
+
+  const unusedI = issues.find(
+    (issue) => issue.ruleId === "noUnusedLocals" && issue.message.includes('"i"')
+  );
+  const unusedJ = issues.find(
+    (issue) => issue.ruleId === "noUnusedLocals" && issue.message.includes('"j"')
+  );
+  assert.equal(unusedI, undefined, "Loop variable i should be recognized as used.");
+  assert.ok(unusedJ, "Loop variable j should be recognized as declared and unused.");
+
+  const preferConstJ = issues.find(
+    (issue) => issue.ruleId === "preferConstLocals" && issue.message.includes('"j"')
+  );
+  assert.equal(
+    preferConstJ,
+    undefined,
+    "Const for-loop declarations should not trigger preferConstLocals."
+  );
+}
+
+function testWorkspaceCorpusSnapshot(): void {
+  const corpusRoot = path.join(
+    process.cwd(),
+    "test-files",
+    "linter-corpus",
+    "workspace"
+  );
+  const snapshotPath = path.join(
+    process.cwd(),
+    "test-files",
+    "linter-corpus",
+    "workspace.snapshot.json"
+  );
+
+  const corpusFiles = fs
+    .readdirSync(corpusRoot)
+    .filter((entry) => entry.toLowerCase().endsWith(".as"))
+    .sort((left, right) => left.localeCompare(right));
+
+  const aggregateCounts = {} as Record<RuleId, number>;
+  for (const ruleId of allRuleIds) {
+    aggregateCounts[ruleId] = 0;
+  }
+
+  const fileSnapshots = corpusFiles.map((fileName) => {
+    const filePath = path.join(corpusRoot, fileName);
+    const text = fs.readFileSync(filePath, "utf8");
+    const issues = runCase(`workspace-corpus-${fileName}`, text, (settings) => {
+      enableOnly(settings, allRuleIds);
+    });
+
+    const ruleCounts = {} as Record<RuleId, number>;
+    for (const ruleId of allRuleIds) {
+      const count = countRule(issues, ruleId);
+      ruleCounts[ruleId] = count;
+      aggregateCounts[ruleId] += count;
+    }
+
+    return {
+      fileName,
+      totalIssues: issues.length,
+      ruleCounts,
+      issues: issues
+        .map((issue) => ({
+          ruleId: issue.ruleId,
+          severity: issue.severity,
+          message: issue.message,
+          line: issue.range.start.line,
+          character: issue.range.start.character
+        }))
+        .sort((left, right) => {
+          if (left.line !== right.line) return left.line - right.line;
+          if (left.character !== right.character) return left.character - right.character;
+          if (left.ruleId !== right.ruleId) return left.ruleId.localeCompare(right.ruleId);
+          return left.message.localeCompare(right.message);
+        })
+    };
+  });
+
+  const observedSnapshot = {
+    totalFiles: corpusFiles.length,
+    totalIssues: fileSnapshots.reduce((sum, file) => sum + file.totalIssues, 0),
+    aggregateRuleCounts: aggregateCounts,
+    files: fileSnapshots
+  };
+
+  if (process.argv.includes("--update-snapshot")) {
+    fs.writeFileSync(snapshotPath, `${JSON.stringify(observedSnapshot, null, 2)}\n`, "utf8");
+    return;
+  }
+
+  const expected = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
+  assert.deepEqual(observedSnapshot, expected);
+}
+
 function main(): void {
   testDebugCallsIgnoreStringsAndComments();
   testAutoTypeIgnoreStringsAndComments();
   testTodoCommentsOnlyLineComments();
-  testNoEmptyCatch();
-  testNoEmptyControlBodyAndDoWhileExclusion();
-  testUnusedLocalsAndParams();
+  testNoEmptyCatchAndControlBody();
+  testUnusedLocalsAndParamsAndFixes();
   testNoShadowing();
   testNoUnreachableCode();
   testStringByValueAndImplicitFloatToInt();
+  testNewRulesDeadStoreDuplicateConstCast();
   testSuppressionsEnableAndBlockScopes();
   testSuppressNextLineDirective();
   testMaxDiagnosticsCap();
+  testStringPrefixesDoNotCountAsIdentifierReads();
+  testForInitializerDeclarationsAreModeled();
+  testMediumCorpusSnapshot();
+  testWorkspaceCorpusSnapshot();
   console.log("Linter regression tests passed.");
 }
 

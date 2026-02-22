@@ -1,5 +1,8 @@
 import { createRange } from "../range";
-import { countIdentifierMatches, collectFunctionModels } from "../functionModel";
+import {
+  collectFunctionModels,
+  isScopeSelfOrDescendant
+} from "../functionModel";
 import type { LintIssue, LintRule, LintRuleContext } from "../types";
 
 export const noUnusedParamsRule: LintRule = {
@@ -15,7 +18,14 @@ export const noUnusedParamsRule: LintRule = {
           continue;
         }
 
-        if (countIdentifierMatches(fn.bodyText, parameter.name) > 0) {
+        const hasRead = fn.events.some(
+          (event) =>
+            event.name === parameter.name &&
+            event.kind === "read" &&
+            event.startOffset > parameter.endOffset &&
+            isScopeSelfOrDescendant(fn.scopes, event.scopeId, parameter.scopeId)
+        );
+        if (hasRead) {
           continue;
         }
 
@@ -28,7 +38,17 @@ export const noUnusedParamsRule: LintRule = {
             parameter.character,
             parameter.line,
             parameter.character + parameter.name.length
-          )
+          ),
+          fix: {
+            title: `Prefix "${parameter.name}" with '_'`,
+            range: createRange(
+              parameter.line,
+              parameter.character,
+              parameter.line,
+              parameter.character + parameter.name.length
+            ),
+            newText: `_${parameter.name}`
+          }
         });
       }
     }

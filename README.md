@@ -15,10 +15,20 @@ Current rules:
 - `noUnreachableCode`: flags statements after `return`/`throw`/`break`/`continue`
 - `noStringByValueParam`: flags `string` parameters passed by value
 - `noImplicitFloatToInt`: flags implicit float-to-int narrowing in integer assignments/returns
+- `noDeadStore`: flags writes overwritten before any read
+- `noDuplicateIncludes`: flags duplicate `#include "..."` directives
+- `noDuplicateImports`: flags duplicate `import ... from "..."` declarations
+- `preferConstLocals`: flags initialized locals that are never reassigned
+- `noRiskyHandleCast`: flags `cast<...@>(...)` handle casts that should be null-guarded
 
 Quick fixes:
 
 - `noTodoComments` supports a direct quick fix that removes the marker token.
+- `noUnusedLocals` supports a quick fix to prefix the local with `_`.
+- `noUnusedParams` supports a quick fix to prefix the parameter with `_`.
+- `noStringByValueParam` supports a quick fix to rewrite as `const string &in`.
+- `noDuplicateIncludes` and `noDuplicateImports` support line-removal quick fixes.
+- `preferConstLocals` supports a quick fix to insert `const`.
 - any linter diagnostic supports:
   - `Disable <rule> for next line` (`// oplint-disable-next-line <rule-id>`)
   - `Disable <rule> for block` (`// oplint-disable-start <rule-id>` + `// oplint-disable-end <rule-id>`)
@@ -47,3 +57,9 @@ Development:
 
 - `npm run compile`
 - `npm test`
+- `npm run test:updateSnapshot` (refreshes medium-corpus snapshot)
+
+Checked-in corpus:
+
+- `test-files/linter-corpus/medium-corpus.as`
+- snapshot expectation: `test-files/linter-corpus/medium-corpus.snapshot.json`

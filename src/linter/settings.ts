@@ -20,7 +20,12 @@ const recommendedRuleConfig: Record<RuleId, RuleConfig> = {
   noShadowing: { enable: true, severity: "warning" },
   noUnreachableCode: { enable: true, severity: "warning" },
   noStringByValueParam: { enable: true, severity: "warning" },
-  noImplicitFloatToInt: { enable: true, severity: "warning" }
+  noImplicitFloatToInt: { enable: true, severity: "warning" },
+  noDeadStore: { enable: true, severity: "warning" },
+  noDuplicateIncludes: { enable: true, severity: "warning" },
+  noDuplicateImports: { enable: true, severity: "warning" },
+  preferConstLocals: { enable: true, severity: "info" },
+  noRiskyHandleCast: { enable: true, severity: "warning" }
 };
 
 const strictRuleConfig: Record<RuleId, RuleConfig> = {
@@ -34,7 +39,12 @@ const strictRuleConfig: Record<RuleId, RuleConfig> = {
   noShadowing: { enable: true, severity: "warning" },
   noUnreachableCode: { enable: true, severity: "warning" },
   noStringByValueParam: { enable: true, severity: "warning" },
-  noImplicitFloatToInt: { enable: true, severity: "warning" }
+  noImplicitFloatToInt: { enable: true, severity: "warning" },
+  noDeadStore: { enable: true, severity: "warning" },
+  noDuplicateIncludes: { enable: true, severity: "warning" },
+  noDuplicateImports: { enable: true, severity: "warning" },
+  preferConstLocals: { enable: true, severity: "warning" },
+  noRiskyHandleCast: { enable: true, severity: "warning" }
 };
 
 const allRuleIds: RuleId[] = [
@@ -48,7 +58,12 @@ const allRuleIds: RuleId[] = [
   "noShadowing",
   "noUnreachableCode",
   "noStringByValueParam",
-  "noImplicitFloatToInt"
+  "noImplicitFloatToInt",
+  "noDeadStore",
+  "noDuplicateIncludes",
+  "noDuplicateImports",
+  "preferConstLocals",
+  "noRiskyHandleCast"
 ];
 
 export function getLinterSettings(): LinterSettings {

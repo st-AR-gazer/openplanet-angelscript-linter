@@ -1,7 +1,7 @@
 import { collectFunctionModels } from "../functionModel";
 import { createRange } from "../range";
 import { positionFromOffset } from "../scan";
-import type { LintIssue, LintRule, LintRuleContext } from "../types";
+import type { LintIssue, LintRule, LintRuleContext, TextRange } from "../types";
 
 const terminatorPattern = /\b(return|throw|break|continue)\b[^;]*;/;
 
@@ -36,6 +36,7 @@ export const noUnreachableCodeRule: LintRule = {
 
         if (unreachableDepth !== null && isExecutableLine(trimmed)) {
           const startCharacter = firstNonWhitespaceIndex(line.codeText);
+          const fix = buildUnreachableFix(context, lineNumber, trimmed);
           issues.push({
             ruleId: this.id,
             message: "Unreachable code detected.",
@@ -45,7 +46,8 @@ export const noUnreachableCodeRule: LintRule = {
               startCharacter,
               lineNumber,
               Math.max(startCharacter + 1, startCharacter + 1)
-            )
+            ),
+            fix
           });
         }
 
@@ -92,4 +94,41 @@ function updateDepth(currentDepth: number, lineCodeText: string): number {
     }
   }
   return depth;
+}
+
+function buildUnreachableFix(
+  context: LintRuleContext,
+  zeroBasedLine: number,
+  trimmedLine: string
+) {
+  if (!trimmedLine.endsWith(";")) {
+    return undefined;
+  }
+  if (/^(if|for|while|switch|try|catch)\b/.test(trimmedLine)) {
+    return undefined;
+  }
+
+  return {
+    title: "Remove unreachable statement",
+    range: toLineDeleteRange(context, zeroBasedLine),
+    newText: ""
+  };
+}
+
+function toLineDeleteRange(context: LintRuleContext, zeroBasedLine: number): TextRange {
+  const line = context.scan.lines[zeroBasedLine];
+  if (!line) {
+    return createRange(zeroBasedLine, 0, zeroBasedLine, 0);
+  }
+
+  if (zeroBasedLine < context.scan.lines.length - 1) {
+    return createRange(zeroBasedLine, 0, zeroBasedLine + 1, 0);
+  }
+
+  return createRange(
+    zeroBasedLine,
+    0,
+    zeroBasedLine,
+    line.rawText.length
+  );
 }
