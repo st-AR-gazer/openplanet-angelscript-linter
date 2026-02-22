@@ -1,0 +1,190 @@
+{
+  "name": "openplanet-angelscript-linter",
+  "displayName": "Openplanet AngelScript Linter",
+  "description": "Standalone lint diagnostics for Openplanet AngelScript.",
+  "version": "0.1.0",
+  "publisher": "ar",
+  "license": "Unlicense",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "openplanet",
+    "angelscript",
+    "linter",
+    "trackmania"
+  ],
+  "activationEvents": [
+    "onLanguage:openplanet-angelscript",
+    "onCommand:openplanetAngelscriptLinter.relint"
+  ],
+  "main": "./out/extension.js",
+  "extensionDependencies": [
+    "ar.openplanet-angelscript-syntax"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "openplanetAngelscriptLinter.relint",
+        "title": "Openplanet AngelScript Linter: Re-lint Open Files"
+      }
+    ],
+    "configuration": {
+      "title": "Openplanet AngelScript Linter",
+      "properties": {
+        "openplanetAngelscriptLinter.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the standalone Openplanet AngelScript linter."
+        },
+        "openplanetAngelscriptLinter.maxDiagnostics": {
+          "type": "number",
+          "default": 250,
+          "minimum": 0,
+          "description": "Maximum diagnostics per file."
+        },
+        "openplanetAngelscriptLinter.profile": {
+          "type": "string",
+          "default": "recommended",
+          "enum": ["custom", "recommended", "strict"],
+          "description": "Rule preset profile. Use custom to fully control per-rule settings."
+        },
+        "openplanetAngelscriptLinter.rules.noTodoComments.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag TODO/FIXME/XXX comments."
+        },
+        "openplanetAngelscriptLinter.rules.noTodoComments.severity": {
+          "type": "string",
+          "default": "info",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for TODO/FIXME/XXX comment diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noDebugCalls.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag debug calls like print(), trace(), and warn()."
+        },
+        "openplanetAngelscriptLinter.rules.noDebugCalls.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for debug call diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noAutoType.enable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Flag auto declarations to enforce explicit types."
+        },
+        "openplanetAngelscriptLinter.rules.noAutoType.severity": {
+          "type": "string",
+          "default": "hint",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for auto-type diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noEmptyCatch.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag catch blocks with empty bodies."
+        },
+        "openplanetAngelscriptLinter.rules.noEmptyCatch.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for empty catch diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noEmptyControlBody.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag if/for/while statements with stray ';' bodies."
+        },
+        "openplanetAngelscriptLinter.rules.noEmptyControlBody.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for empty control-body diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noUnusedLocals.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag local declarations that are never referenced."
+        },
+        "openplanetAngelscriptLinter.rules.noUnusedLocals.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for unused local diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noUnusedParams.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag function parameters that are never referenced."
+        },
+        "openplanetAngelscriptLinter.rules.noUnusedParams.severity": {
+          "type": "string",
+          "default": "info",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for unused parameter diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noShadowing.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag local declarations that shadow outer bindings."
+        },
+        "openplanetAngelscriptLinter.rules.noShadowing.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for shadowing diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noUnreachableCode.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag statements that are unreachable after control-flow terminators."
+        },
+        "openplanetAngelscriptLinter.rules.noUnreachableCode.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for unreachable code diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noStringByValueParam.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag string parameters passed by value instead of by reference."
+        },
+        "openplanetAngelscriptLinter.rules.noStringByValueParam.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for string-by-value parameter diagnostics."
+        },
+        "openplanetAngelscriptLinter.rules.noImplicitFloatToInt.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag assignments/returns that implicitly narrow float expressions to integer types."
+        },
+        "openplanetAngelscriptLinter.rules.noImplicitFloatToInt.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for implicit float-to-int diagnostics."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "test": "npm run -s compile && node out/test/runLinterTests.js",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.108.0",
+    "typescript": "^5.5.0"
+  }
+}
