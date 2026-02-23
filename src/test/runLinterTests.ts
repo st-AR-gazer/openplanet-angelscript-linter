@@ -209,6 +209,28 @@ function testNoUnreachableCode(): void {
   assert.ok(unreachableIssue?.fix, "Unreachable-code issue should include a quick fix.");
 }
 
+function testNoUnreachableCodeIgnoresConditionalEarlyReturn(): void {
+  const issues = runCase(
+    "unreachable-ignores-conditional-early-return",
+    [
+      "int NthIndexOf(const string &in str, const string &in value, int n) {",
+      "  if (n <= 0) return -1;",
+      "  int len = int(str.Length);",
+      "  int vlen = int(value.Length);",
+      "  if (vlen <= 0 || vlen > len) return -1;",
+      "  return len + vlen;",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnreachableCode"])
+  );
+
+  assert.equal(
+    countRule(issues, "noUnreachableCode"),
+    0,
+    "Conditional early returns should not make following lines unreachable."
+  );
+}
+
 function testStringByValueAndImplicitFloatToInt(): void {
   const issues = runCase(
     "string-by-value-float-to-int",
@@ -226,6 +248,50 @@ function testStringByValueAndImplicitFloatToInt(): void {
   assert.ok(countRule(issues, "noImplicitFloatToInt") >= 2);
   const byValueIssue = issues.find((issue) => issue.ruleId === "noStringByValueParam");
   assert.ok(byValueIssue?.fix, "String-by-value issue should include a quick fix.");
+}
+
+function testStringByValueParamIgnoresUnderscorePrefix(): void {
+  const issues = runCase(
+    "string-by-value-underscore-prefix",
+    [
+      "void WriteFile(string _path, string visible) {",
+      "  print(_path);",
+      "  print(visible);",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noStringByValueParam"])
+  );
+
+  assert.equal(
+    countRule(issues, "noStringByValueParam"),
+    1,
+    "Underscore-prefixed string parameter should be ignored by noStringByValueParam."
+  );
+  assert.ok(
+    issues.every((issue) => !issue.message.includes("\"_path\"")),
+    "Expected no string-by-value issue for underscore-prefixed parameter _path."
+  );
+}
+
+function testUnusedParamsHandlesDefaultValueIdentifiers(): void {
+  const issues = runCase(
+    "unused-params-default-value-identifiers",
+    [
+      "string pluginName = Meta::ExecutingPlugin().Name;",
+      "void NotifyInfo(const string &in msg = \"\", const string &in pn = pluginName, int t = 6000) {",
+      "  print(msg);",
+      "  print(pn);",
+      "  print(t);",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnusedParams"])
+  );
+
+  assert.equal(
+    countRule(issues, "noUnusedParams"),
+    0,
+    "Default-value identifiers should not be misparsed as parameter names."
+  );
 }
 
 function testNewRulesDeadStoreDuplicateConstCast(): void {
@@ -271,6 +337,112 @@ function testNewRulesDeadStoreDuplicateConstCast(): void {
   assert.ok(deadStoreIssue?.fix, "Dead-store issue should include a safe quick fix.");
 }
 
+function testNoDeadStoreAllowsSelfReferentialReassignment(): void {
+  const issues = runCase(
+    "dead-store-self-referential-reassignment",
+    [
+      "void Main() {",
+      "  string trimmedPath = \"hello/world\";",
+      "  int index = trimmedPath.LastIndexOf(\"/\");",
+      "  int index2 = trimmedPath.LastIndexOf(\"\\\\\");",
+      "  index = Math::Max(index, index2);",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noDeadStore"])
+  );
+
+  assert.equal(
+    countRule(issues, "noDeadStore"),
+    0,
+    "Self-referential reassignment should count as reading the previous value."
+  );
+}
+
+function testNoDeadStoreIgnoresIfElseBranchAssignments(): void {
+  const issues = runCase(
+    "dead-store-ignores-if-else-branch-assignments",
+    [
+      "void RenameFile(const string &in filePath, const string &in newFileName) {",
+      "  string currentPath = filePath;",
+      "  string newPath;",
+      "  string sanitizedNewName = newFileName;",
+      "  if (Directory::IsDirectory(newPath)) {",
+      "    string parentDirectory = Path::GetDirectoryName(currentPath);",
+      "    newPath = Path::Join(parentDirectory, sanitizedNewName);",
+      "  } else {",
+      "    string directoryPath = Path::GetDirectoryName(currentPath);",
+      "    string extension = Path::GetExtension(currentPath);",
+      "    newPath = Path::Join(directoryPath, sanitizedNewName + extension);",
+      "  }",
+      "  IO::Move(currentPath, newPath);",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noDeadStore"])
+  );
+
+  assert.equal(
+    countRule(issues, "noDeadStore"),
+    0,
+    "if/else branch writes to the same variable should not be flagged as dead stores before post-branch use."
+  );
+}
+
+function testPreferConstLocalsIgnoresIndexedAndMemberWrites(): void {
+  const issues = runCase(
+    "prefer-const-ignores-indexed-member-writes",
+    [
+      "void Main() {",
+      "  Json::Value j = Json::Object();",
+      '  j[\"name\"] = Meta::ExecutingPlugin().Name;',
+      '  j[\"version\"] = \"1.0.0\";',
+      "  j.author = Meta::ExecutingPlugin().Author;",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["preferConstLocals"])
+  );
+
+  assert.equal(
+    countRule(issues, "preferConstLocals"),
+    0,
+    "Indexed/member assignments should count as writes and prevent preferConstLocals diagnostics."
+  );
+}
+
+function testPreferConstLocalsIgnoresHandlesReferencesAndAuto(): void {
+  const issues = runCase(
+    "prefer-const-ignores-handles-references-auto",
+    [
+      "class Foo {",
+      "  void Mutate() {}",
+      "}",
+      "",
+      "void Main() {",
+      "  Foo@ handleValue = Foo();",
+      "  Foo &refValue = handleValue;",
+      "  auto inferred = handleValue;",
+      "  int stableNumber = 42;",
+      "  handleValue.Mutate();",
+      "  inferred.Mutate();",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["preferConstLocals"])
+  );
+
+  const constIssues = issues.filter((issue) => issue.ruleId === "preferConstLocals");
+  const names = constIssues.map((issue) => {
+    const match = /"([^"]+)"/.exec(issue.message);
+    return match ? match[1] : "";
+  });
+
+  assert.ok(!names.includes("handleValue"));
+  assert.ok(!names.includes("refValue"));
+  assert.ok(!names.includes("inferred"));
+  assert.ok(
+    names.includes("stableNumber"),
+    "Primitive locals should still be eligible for preferConstLocals."
+  );
+}
+
 function testSuppressionsEnableAndBlockScopes(): void {
   const issues = runCase(
     "suppressions-enable-block",
@@ -290,6 +462,27 @@ function testSuppressionsEnableAndBlockScopes(): void {
   );
 
   assert.equal(countRule(issues, "noDebugCalls"), 2);
+}
+
+function testSuppressionsAllowWildcardWhenRuleIdOmitted(): void {
+  const issues = runCase(
+    "suppressions-wildcard-when-rule-id-omitted",
+    [
+      "void Main() {",
+      "  // oplint-disable",
+      '  print("muted");',
+      "  // oplint-enable",
+      '  print("reported");',
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noDebugCalls"])
+  );
+
+  assert.equal(
+    countRule(issues, "noDebugCalls"),
+    1,
+    "Expected oplint-disable/oplint-enable without rule ids to behave as wildcard suppression."
+  );
 }
 
 function testSuppressNextLineDirective(): void {
@@ -518,9 +711,17 @@ function main(): void {
   testUnusedLocalsAndParamsAndFixes();
   testNoShadowing();
   testNoUnreachableCode();
+  testNoUnreachableCodeIgnoresConditionalEarlyReturn();
   testStringByValueAndImplicitFloatToInt();
+  testStringByValueParamIgnoresUnderscorePrefix();
+  testUnusedParamsHandlesDefaultValueIdentifiers();
   testNewRulesDeadStoreDuplicateConstCast();
+  testNoDeadStoreAllowsSelfReferentialReassignment();
+  testNoDeadStoreIgnoresIfElseBranchAssignments();
+  testPreferConstLocalsIgnoresIndexedAndMemberWrites();
+  testPreferConstLocalsIgnoresHandlesReferencesAndAuto();
   testSuppressionsEnableAndBlockScopes();
+  testSuppressionsAllowWildcardWhenRuleIdOmitted();
   testSuppressNextLineDirective();
   testMaxDiagnosticsCap();
   testStringPrefixesDoNotCountAsIdentifierReads();

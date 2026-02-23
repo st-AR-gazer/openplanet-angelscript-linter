@@ -29,12 +29,18 @@ export const noDeadStoreRule: LintRule = {
           )
           .sort((left, right) => left.startOffset - right.startOffset);
 
-        let pendingWrite: SymbolEvent | null = null;
+        const pendingWriteByScope = new Map<number, SymbolEvent>();
         for (const event of events) {
           if (event.kind === "write") {
+            const pendingWrite = pendingWriteByScope.get(event.scopeId);
             if (pendingWrite) {
+              const overwriteConsumesPreviousValue = doesWriteConsumePreviousValue(
+                fn.assignments,
+                local.name,
+                event
+              );
               const key = `${local.name}:${pendingWrite.startOffset}`;
-              if (!seen.has(key)) {
+              if (!overwriteConsumesPreviousValue && !seen.has(key)) {
                 seen.add(key);
                 issues.push({
                   ruleId: this.id,
@@ -50,18 +56,74 @@ export const noDeadStoreRule: LintRule = {
                 });
               }
             }
-            pendingWrite = event;
+            pendingWriteByScope.set(event.scopeId, event);
             continue;
           }
 
-          pendingWrite = null;
+          pendingWriteByScope.clear();
         }
       }
     }
 
-    return issues;
+  return issues;
   }
 };
+
+function doesWriteConsumePreviousValue(
+  assignments: Array<{
+    name: string;
+    operator: string;
+    expressionText: string;
+    startOffset: number;
+  }>,
+  localName: string,
+  writeEvent: SymbolEvent
+): boolean {
+  if (writeEvent.isInitialization) {
+    return false;
+  }
+
+  const assignment = assignments.find(
+    (entry) =>
+      entry.startOffset === writeEvent.startOffset &&
+      entry.name === localName
+  );
+  if (!assignment) {
+    return false;
+  }
+
+  if (assignment.operator !== "=") {
+    return true;
+  }
+
+  return containsStandaloneIdentifierRead(
+    assignment.expressionText,
+    localName
+  );
+}
+
+function containsStandaloneIdentifierRead(
+  expressionText: string,
+  localName: string
+): boolean {
+  const escapedName = localName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`\\b${escapedName}\\b`, "g");
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(expressionText)) !== null) {
+    const previousCharacter = expressionText[match.index - 1] ?? "";
+    if (
+      previousCharacter === "." ||
+      previousCharacter === ":" ||
+      previousCharacter === ">"
+    ) {
+      continue;
+    }
+    return true;
+  }
+
+  return false;
+}
 
 function buildDeadStoreFix(
   context: LintRuleContext,

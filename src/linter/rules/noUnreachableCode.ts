@@ -3,7 +3,8 @@ import { createRange } from "../range";
 import { positionFromOffset } from "../scan";
 import type { LintIssue, LintRule, LintRuleContext, TextRange } from "../types";
 
-const terminatorPattern = /\b(return|throw|break|continue)\b[^;]*;/;
+const unconditionalTerminatorPattern =
+  /^(?:return|throw|break|continue)\b[\s\S]*;\s*$/;
 
 export const noUnreachableCodeRule: LintRule = {
   id: "noUnreachableCode",
@@ -51,7 +52,7 @@ export const noUnreachableCodeRule: LintRule = {
           });
         }
 
-        if (terminatorPattern.test(trimmed)) {
+        if (isUnconditionalTerminatorLine(trimmed)) {
           unreachableDepth = depth;
         }
 
@@ -77,6 +78,21 @@ function isExecutableLine(trimmed: string): boolean {
     return false;
   }
   return true;
+}
+
+function isUnconditionalTerminatorLine(trimmed: string): boolean {
+  if (!trimmed) {
+    return false;
+  }
+  if (/^(if|for|while|switch|case|default|else|catch|try|do)\b/.test(trimmed)) {
+    return false;
+  }
+
+  const withoutLabel = trimmed.replace(
+    /^[A-Za-z_][A-Za-z0-9_]*\s*:\s*/,
+    ""
+  );
+  return unconditionalTerminatorPattern.test(withoutLabel);
 }
 
 function firstNonWhitespaceIndex(text: string): number {

@@ -15,6 +15,9 @@ export const noStringByValueParamRule: LintRule = {
         if (!isStringTypeText(parameter.typeText)) {
           continue;
         }
+        if (parameter.name.startsWith("_")) {
+          continue;
+        }
         if (parameter.rawText.includes("@")) {
           continue;
         }

@@ -1,15 +1,15 @@
 import type { RuleSuppressions } from "./types";
 
 const disableDirectivePattern =
-  /^\s*\/\/\s*oplint-disable\s+([A-Za-z0-9_*,-\s]+)\s*$/i;
+  /^\s*\/\/\s*oplint-disable(?:\s+([A-Za-z0-9_*,-\s]+))?\s*$/i;
 const enableDirectivePattern =
-  /^\s*\/\/\s*oplint-enable\s+([A-Za-z0-9_*,-\s]+)\s*$/i;
+  /^\s*\/\/\s*oplint-enable(?:\s+([A-Za-z0-9_*,-\s]+))?\s*$/i;
 const disableNextLineDirectivePattern =
-  /^\s*\/\/\s*oplint-disable-next-line\s+([A-Za-z0-9_*,-\s]+)\s*$/i;
+  /^\s*\/\/\s*oplint-disable-next-line(?:\s+([A-Za-z0-9_*,-\s]+))?\s*$/i;
 const disableStartDirectivePattern =
-  /^\s*\/\/\s*oplint-disable-start\s+([A-Za-z0-9_*,-\s]+)\s*$/i;
+  /^\s*\/\/\s*oplint-disable-start(?:\s+([A-Za-z0-9_*,-\s]+))?\s*$/i;
 const disableEndDirectivePattern =
-  /^\s*\/\/\s*oplint-disable-end\s+([A-Za-z0-9_*,-\s]+)\s*$/i;
+  /^\s*\/\/\s*oplint-disable-end(?:\s+([A-Za-z0-9_*,-\s]+))?\s*$/i;
 
 export function parseSuppressions(text: string): RuleSuppressions {
   const lines = text.replace(/\r/g, "").split("\n");
@@ -195,7 +195,11 @@ function removeFromRuleSet(target: Set<string>, values: Set<string>): void {
   }
 }
 
-function parseRuleIdSet(raw: string): Set<string> {
+function parseRuleIdSet(raw?: string): Set<string> {
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    return new Set<string>(["*"]);
+  }
+
   const parsed = new Set<string>();
   for (const chunk of raw.split(",")) {
     const value = chunk.trim();

@@ -1,0 +1,11 @@
+.github/**
+src/**
+tsconfig.json
+**/*.map
+**/*.ts
+out/test/**
+test-files/**
+node_modules/**
+package-lock.json
+.gitignore
+../**

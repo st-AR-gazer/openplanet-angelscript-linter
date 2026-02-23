@@ -650,7 +650,22 @@ function parseParameters(
       continue;
     }
 
-    const nameToken = findLastIdentifierToken(tokens, segment.startIndex, segment.endIndex);
+    const equalsTokenIndex = findTopLevelEqualsTokenIndex(
+      tokens,
+      segment.startIndex,
+      segment.endIndex
+    );
+    const nameSearchEndIndex =
+      equalsTokenIndex !== undefined ? equalsTokenIndex - 1 : segment.endIndex;
+    if (nameSearchEndIndex < segment.startIndex) {
+      continue;
+    }
+
+    const nameToken = findLastIdentifierToken(
+      tokens,
+      segment.startIndex,
+      nameSearchEndIndex
+    );
     if (!nameToken) {
       continue;
     }
@@ -1385,11 +1400,7 @@ function classifyIdentifierTokenEvents(
       continue;
     }
 
-    const next = tokens[index + 1];
-    const isWrite =
-      (next !== undefined && assignmentOperatorPattern.test(next.value)) ||
-      (next !== undefined && (next.value === "++" || next.value === "--")) ||
-      (previous !== undefined && (previous.value === "++" || previous.value === "--"));
+    const isWrite = isWriteUsageAtIdentifierToken(tokens, index);
     const position = positionFromOffset(scan, token.startOffset);
     events.push({
       name: token.value,
@@ -1403,6 +1414,104 @@ function classifyIdentifierTokenEvents(
   }
 
   return events;
+}
+
+function isWriteUsageAtIdentifierToken(
+  tokens: LexToken[],
+  identifierIndex: number
+): boolean {
+  const previous = tokens[identifierIndex - 1];
+  const next = tokens[identifierIndex + 1];
+  if (
+    (next !== undefined && assignmentOperatorPattern.test(next.value)) ||
+    (next !== undefined && (next.value === "++" || next.value === "--")) ||
+    (previous !== undefined && (previous.value === "++" || previous.value === "--"))
+  ) {
+    return true;
+  }
+
+  let cursor = identifierIndex + 1;
+  while (cursor < tokens.length) {
+    const token = tokens[cursor];
+    if (!token) {
+      break;
+    }
+
+    if (token.value === "[") {
+      const closeBracket = findMatchingTokenIndex(tokens, cursor, "[", "]");
+      if (closeBracket < 0) {
+        return false;
+      }
+      cursor = closeBracket + 1;
+      continue;
+    }
+
+    if (
+      token.value === "." ||
+      token.value === "->" ||
+      token.value === "::"
+    ) {
+      const memberToken = tokens[cursor + 1];
+      if (
+        !memberToken ||
+        (memberToken.kind !== "identifier" && memberToken.kind !== "keyword")
+      ) {
+        return false;
+      }
+      cursor += 2;
+      continue;
+    }
+
+    if (token.value === "(") {
+      const closeParen = findMatchingTokenIndex(tokens, cursor, "(", ")");
+      if (closeParen < 0) {
+        return false;
+      }
+      cursor = closeParen + 1;
+      continue;
+    }
+
+    break;
+  }
+
+  const trailing = tokens[cursor];
+  if (!trailing) {
+    return false;
+  }
+
+  return (
+    assignmentOperatorPattern.test(trailing.value) ||
+    trailing.value === "++" ||
+    trailing.value === "--"
+  );
+}
+
+function findMatchingTokenIndex(
+  tokens: LexToken[],
+  openIndex: number,
+  openValue: string,
+  closeValue: string
+): number {
+  let depth = 0;
+  for (let index = openIndex; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (!token) {
+      continue;
+    }
+
+    if (token.value === openValue) {
+      depth += 1;
+      continue;
+    }
+    if (token.value === closeValue) {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+
+  return -1;
 }
 
 function findFirstDeclaratorNameTokenIndex(tokens: LexToken[]): number {
@@ -1832,6 +1941,60 @@ function findLastIdentifierToken(
     return token;
   }
   return null;
+}
+
+function findTopLevelEqualsTokenIndex(
+  tokens: LexToken[],
+  startIndex: number,
+  endIndex: number
+): number | undefined {
+  let parenDepth = 0;
+  let bracketDepth = 0;
+  let braceDepth = 0;
+  let angleDepth = 0;
+
+  for (let index = startIndex; index <= endIndex; index += 1) {
+    const token = tokens[index];
+    if (!token) {
+      continue;
+    }
+
+    if (token.value === "(") {
+      parenDepth += 1;
+    } else if (token.value === ")") {
+      parenDepth = Math.max(0, parenDepth - 1);
+    } else if (token.value === "[") {
+      bracketDepth += 1;
+    } else if (token.value === "]") {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+    } else if (token.value === "{") {
+      braceDepth += 1;
+    } else if (token.value === "}") {
+      braceDepth = Math.max(0, braceDepth - 1);
+    } else if (token.value === "<") {
+      if (shouldTreatAsTemplateOpen(tokens, index, angleDepth)) {
+        angleDepth += 1;
+      }
+    } else if (token.value === ">") {
+      angleDepth = Math.max(0, angleDepth - 1);
+    } else if (token.value === ">>") {
+      angleDepth = Math.max(0, angleDepth - 2);
+    } else if (token.value === ">>>") {
+      angleDepth = Math.max(0, angleDepth - 3);
+    }
+
+    if (
+      token.value === "=" &&
+      parenDepth === 0 &&
+      bracketDepth === 0 &&
+      braceDepth === 0 &&
+      angleDepth === 0
+    ) {
+      return index;
+    }
+  }
+
+  return undefined;
 }
 
 function findQualifierStartIndex(

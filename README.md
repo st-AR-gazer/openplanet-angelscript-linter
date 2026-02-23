@@ -29,19 +29,24 @@ Quick fixes:
 - `noStringByValueParam` supports a quick fix to rewrite as `const string &in`.
 - `noDuplicateIncludes` and `noDuplicateImports` support line-removal quick fixes.
 - `preferConstLocals` supports a quick fix to insert `const`.
+- `preferConstLocals` supports optional direct `Add const` shortcuts (disabled by default):
+  - inline CodeLens:
+    `openplanetAngelscriptLinter.preferConstLocals.inlineFixCodeLens.enable`
+  - hover link:
+    `openplanetAngelscriptLinter.preferConstLocals.hoverFixLink.enable`
 - any linter diagnostic supports:
-  - `Disable <rule> for next line` (`// oplint-disable-next-line <rule-id>`)
-  - `Disable <rule> for block` (`// oplint-disable-start <rule-id>` + `// oplint-disable-end <rule-id>`)
-  - `Disable <rule> for file` (`// oplint-disable <rule-id>`)
-  - `Re-enable <rule> below` (`// oplint-enable <rule-id>`)
+  - `Disable <rule> for next line` (`// oplint-disable-next-line <rule-id>` or `// oplint-disable-next-line`)
+  - `Disable <rule> for block` (`// oplint-disable-start <rule-id>` + `// oplint-disable-end <rule-id>`, or omitted rule id for wildcard)
+  - `Disable <rule> for file` (`// oplint-disable <rule-id>` or `// oplint-disable`)
+  - `Re-enable <rule> below` (`// oplint-enable <rule-id>` or `// oplint-enable`)
 
 Suppression directives:
 
-- `// oplint-disable <rule-id>` (file-wide)
-- `// oplint-enable <rule-id>` (re-enable file-wide suppression)
-- `// oplint-disable-next-line <rule-id>` (single next line)
-- `// oplint-disable-start <rule-id>` / `// oplint-disable-end <rule-id>` (manual block suppression)
-- `*` is supported as a wildcard rule id.
+- `// oplint-disable <rule-id>` / `// oplint-disable` (file-wide)
+- `// oplint-enable <rule-id>` / `// oplint-enable` (re-enable file-wide suppression)
+- `// oplint-disable-next-line <rule-id>` / `// oplint-disable-next-line` (single next line)
+- `// oplint-disable-start <rule-id>` / `// oplint-disable-end <rule-id>` (manual block suppression; omitted rule id means wildcard)
+- `*` is supported as an explicit wildcard rule id.
 
 Rule profile presets:
 

@@ -1,6 +1,6 @@
 {
   "totalFiles": 2,
-  "totalIssues": 15,
+  "totalIssues": 14,
   "aggregateRuleCounts": {
     "noTodoComments": 0,
     "noDebugCalls": 1,
@@ -16,7 +16,7 @@
     "noDeadStore": 2,
     "noDuplicateIncludes": 1,
     "noDuplicateImports": 1,
-    "preferConstLocals": 3,
+    "preferConstLocals": 2,
     "noRiskyHandleCast": 1
   },
   "files": [
@@ -116,7 +116,7 @@
     },
     {
       "fileName": "file-b.as",
-      "totalIssues": 5,
+      "totalIssues": 4,
       "ruleCounts": {
         "noTodoComments": 0,
         "noDebugCalls": 0,
@@ -132,7 +132,7 @@
         "noDeadStore": 0,
         "noDuplicateIncludes": 0,
         "noDuplicateImports": 1,
-        "preferConstLocals": 2,
+        "preferConstLocals": 1,
         "noRiskyHandleCast": 1
       },
       "issues": [
@@ -154,13 +154,6 @@
           "ruleId": "noUnusedLocals",
           "severity": "warning",
           "message": "Local \"handle\" is never used.",
-          "line": 7,
-          "character": 10
-        },
-        {
-          "ruleId": "preferConstLocals",
-          "severity": "info",
-          "message": "Local \"handle\" is never reassigned. Prefer const-correctness.",
           "line": 7,
           "character": 10
         },

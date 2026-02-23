@@ -19,7 +19,8 @@
   ],
   "activationEvents": [
     "onLanguage:openplanet-angelscript",
-    "onCommand:openplanetAngelscriptLinter.relint"
+    "onCommand:openplanetAngelscriptLinter.relint",
+    "onCommand:openplanetAngelscriptLinter.applyPreferConstFixAtLine"
   ],
   "main": "./out/extension.js",
   "extensionDependencies": [
@@ -30,6 +31,10 @@
       {
         "command": "openplanetAngelscriptLinter.relint",
         "title": "Openplanet AngelScript Linter: Re-lint Open Files"
+      },
+      {
+        "command": "openplanetAngelscriptLinter.applyPreferConstFixAtLine",
+        "title": "Openplanet AngelScript Linter: Apply Prefer-Const Fix"
       }
     ],
     "configuration": {
@@ -45,6 +50,16 @@
           "default": 250,
           "minimum": 0,
           "description": "Maximum diagnostics per file."
+        },
+        "openplanetAngelscriptLinter.preferConstLocals.inlineFixCodeLens.enable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show one-click \"Add const\" CodeLens above prefer-const diagnostics."
+        },
+        "openplanetAngelscriptLinter.preferConstLocals.hoverFixLink.enable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show direct \"Add const\" hover link on prefer-const diagnostics."
         },
         "openplanetAngelscriptLinter.profile": {
           "type": "string",
@@ -236,6 +251,7 @@
     "watch": "tsc -w -p .",
     "test": "npm run -s compile && node out/test/runLinterTests.js",
     "test:updateSnapshot": "npm run -s compile && node out/test/runLinterTests.js --update-snapshot",
+    "release:package": "node scripts/release/packageVsix.mjs",
     "release:verify": "npm run -s test",
     "vscode:prepublish": "npm run compile"
   },

@@ -24,6 +24,9 @@ export const preferConstLocalsRule: LintRule = {
         if (local.name.startsWith("_")) {
           continue;
         }
+        if (isUnsafeConstSuggestionType(local.typeText)) {
+          continue;
+        }
 
         const declarationPeers = fn.locals.filter(
           (other) =>
@@ -74,3 +77,22 @@ export const preferConstLocalsRule: LintRule = {
     return issues;
   }
 };
+
+function isUnsafeConstSuggestionType(typeText: string): boolean {
+  const normalized = typeText.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  // Avoid unsafe suggestions where const often changes mutability semantics.
+  if (normalized.includes("@") || normalized.includes("&")) {
+    return true;
+  }
+
+  // auto may infer handle/reference/object types where const can break valid calls.
+  if (/\bauto\b/.test(normalized)) {
+    return true;
+  }
+
+  return false;
+}

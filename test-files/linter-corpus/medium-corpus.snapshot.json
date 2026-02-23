@@ -1,5 +1,5 @@
 {
-  "totalIssues": 31,
+  "totalIssues": 27,
   "ruleCounts": {
     "noTodoComments": 1,
     "noDebugCalls": 1,
@@ -12,10 +12,10 @@
     "noUnreachableCode": 1,
     "noStringByValueParam": 1,
     "noImplicitFloatToInt": 2,
-    "noDeadStore": 5,
+    "noDeadStore": 3,
     "noDuplicateIncludes": 1,
     "noDuplicateImports": 1,
-    "preferConstLocals": 6,
+    "preferConstLocals": 4,
     "noRiskyHandleCast": 1
   },
   "issues": [
@@ -69,13 +69,6 @@
       "character": 7
     },
     {
-      "ruleId": "preferConstLocals",
-      "severity": "info",
-      "message": "Local \"inferred\" is never reassigned. Prefer const-correctness.",
-      "line": 8,
-      "character": 7
-    },
-    {
       "ruleId": "noUnusedLocals",
       "severity": "warning",
       "message": "Local \"unusedLocal\" is never used.",
@@ -109,13 +102,6 @@
       "message": "Value assigned to \"deadStore\" is overwritten before being read.",
       "line": 11,
       "character": 2
-    },
-    {
-      "ruleId": "noDeadStore",
-      "severity": "warning",
-      "message": "Value assigned to \"constCandidate\" is overwritten before being read.",
-      "line": 13,
-      "character": 6
     },
     {
       "ruleId": "noUnusedLocals",
@@ -153,13 +139,6 @@
       "character": 10
     },
     {
-      "ruleId": "preferConstLocals",
-      "severity": "info",
-      "message": "Local \"handle\" is never reassigned. Prefer const-correctness.",
-      "line": 16,
-      "character": 10
-    },
-    {
       "ruleId": "noRiskyHandleCast",
       "severity": "warning",
       "message": "Handle cast \"cast<MyType@>(...)\" may return null; guard usages explicitly.",
@@ -186,13 +165,6 @@
       "message": "Debug call \"print(...)\" found.",
       "line": 22,
       "character": 2
-    },
-    {
-      "ruleId": "noDeadStore",
-      "severity": "warning",
-      "message": "Value assigned to \"shadow\" is overwritten before being read.",
-      "line": 24,
-      "character": 6
     },
     {
       "ruleId": "preferConstLocals",
