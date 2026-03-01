@@ -53,6 +53,7 @@ Rule profile presets:
 - `openplanetAngelscriptLinter.profile = recommended` (default)
 - `openplanetAngelscriptLinter.profile = strict`
 - `openplanetAngelscriptLinter.profile = custom` (uses per-rule `enable`/`severity` settings)
+- `openplanetAngelscriptLinter.rules.preferConstLocals.enable` applies in all profiles (can be toggled directly in Settings UI)
 
 Settings prefix:
 

@@ -76,12 +76,18 @@ export function getLinterSettings(): LinterSettings {
       : profile === "recommended"
         ? recommendedRuleConfig
         : readCustomRules(config);
+  const rules = cloneRuleConfig(ruleConfig);
+
+  rules.preferConstLocals.enable = config.get<boolean>(
+    "rules.preferConstLocals.enable",
+    rules.preferConstLocals.enable
+  );
 
   return {
     enable: config.get<boolean>("enable", true),
     profile,
     maxDiagnostics: Math.max(0, config.get<number>("maxDiagnostics", 250)),
-    rules: cloneRuleConfig(ruleConfig)
+    rules
   };
 }
 

@@ -2,6 +2,7 @@
   "name": "openplanet-angelscript-linter",
   "displayName": "Openplanet AngelScript Linter",
   "description": "Standalone lint diagnostics for Openplanet AngelScript.",
+  "icon": "icon.png",
   "version": "0.1.0",
   "publisher": "ar",
   "license": "Unlicense",
@@ -65,7 +66,7 @@
           "type": "string",
           "default": "recommended",
           "enum": ["custom", "recommended", "strict"],
-          "description": "Rule preset profile. Use custom to fully control per-rule settings."
+          "description": "Rule preset profile. Use custom to control all per-rule settings."
         },
         "openplanetAngelscriptLinter.rules.noTodoComments.enable": {
           "type": "boolean",
@@ -224,7 +225,7 @@
         "openplanetAngelscriptLinter.rules.preferConstLocals.enable": {
           "type": "boolean",
           "default": true,
-          "description": "Flag initialized locals that are never reassigned and should be const."
+          "description": "Flag initialized locals that are never reassigned and should be const. This toggle applies in all profiles."
         },
         "openplanetAngelscriptLinter.rules.preferConstLocals.severity": {
           "type": "string",
