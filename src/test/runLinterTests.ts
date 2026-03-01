@@ -172,6 +172,52 @@ function testUnusedLocalsAndParamsAndFixes(): void {
   assert.ok(unusedParamIssue?.fix, "Unused-param issue should include a quick fix.");
 }
 
+function testNoUnusedParamsTreatsWrittenOutParamsAsUsed(): void {
+  const issues = runCase(
+    "unused-params-out-write",
+    [
+      "bool BuildXml(string &out xmlOut, string &out errOut) {",
+      "  xmlOut = \"\";",
+      "  errOut = \"\";",
+      "  return true;",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnusedParams"])
+  );
+
+  assert.equal(
+    countRule(issues, "noUnusedParams"),
+    0,
+    "Written out-params should count as used."
+  );
+}
+
+function testNoUnusedParamsStillFlagsUntouchedOutParams(): void {
+  const issues = runCase(
+    "unused-params-out-untouched",
+    [
+      "bool BuildXml(string &out xmlOut, string &out errOut) {",
+      "  xmlOut = \"\";",
+      "  return true;",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnusedParams"])
+  );
+
+  assert.equal(
+    countRule(issues, "noUnusedParams"),
+    1,
+    "Untouched out-params should still be flagged."
+  );
+  assert.ok(
+    issues.some(
+      (issue) =>
+        issue.ruleId === "noUnusedParams" && issue.message.includes("\"errOut\"")
+    ),
+    "Expected untouched out-parameter errOut to be reported."
+  );
+}
+
 function testNoShadowing(): void {
   const issues = runCase(
     "shadowing",
@@ -228,6 +274,50 @@ function testNoUnreachableCodeIgnoresConditionalEarlyReturn(): void {
     countRule(issues, "noUnreachableCode"),
     0,
     "Conditional early returns should not make following lines unreachable."
+  );
+}
+
+function testNoUnreachableCodeIgnoresElseContinuation(): void {
+  const issues = runCase(
+    "unreachable-ignores-else-continuation",
+    [
+      "int Pick(bool cond) {",
+      "  if (cond) {",
+      "    return 1;",
+      "  } else {",
+      "    return 2;",
+      "  }",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnreachableCode"])
+  );
+
+  assert.equal(
+    countRule(issues, "noUnreachableCode"),
+    0,
+    "Else continuation after a return in the if-branch should not be unreachable."
+  );
+}
+
+function testNoUnreachableCodeIgnoresCatchContinuation(): void {
+  const issues = runCase(
+    "unreachable-ignores-catch-continuation",
+    [
+      "int Recover() {",
+      "  try {",
+      "    return 1;",
+      "  } catch {",
+      "    return 2;",
+      "  }",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnreachableCode"])
+  );
+
+  assert.equal(
+    countRule(issues, "noUnreachableCode"),
+    0,
+    "Catch continuation after a return in try should not be unreachable."
   );
 }
 
@@ -709,9 +799,13 @@ function main(): void {
   testTodoCommentsOnlyLineComments();
   testNoEmptyCatchAndControlBody();
   testUnusedLocalsAndParamsAndFixes();
+  testNoUnusedParamsTreatsWrittenOutParamsAsUsed();
+  testNoUnusedParamsStillFlagsUntouchedOutParams();
   testNoShadowing();
   testNoUnreachableCode();
   testNoUnreachableCodeIgnoresConditionalEarlyReturn();
+  testNoUnreachableCodeIgnoresElseContinuation();
+  testNoUnreachableCodeIgnoresCatchContinuation();
   testStringByValueAndImplicitFloatToInt();
   testStringByValueParamIgnoresUnderscorePrefix();
   testUnusedParamsHandlesDefaultValueIdentifiers();

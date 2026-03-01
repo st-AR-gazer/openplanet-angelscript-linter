@@ -18,15 +18,22 @@ export const noUnusedParamsRule: LintRule = {
           continue;
         }
 
-        const hasRead = fn.events.some(
-          (event) =>
-            event.name === parameter.name &&
-            event.kind === "read" &&
-            event.startOffset > parameter.endOffset &&
-            isScopeSelfOrDescendant(fn.scopes, event.scopeId, parameter.scopeId)
-        );
+        const hasRead = hasParameterEvent(fn, parameter.name, "read", parameter.endOffset, parameter.scopeId);
         if (hasRead) {
           continue;
+        }
+
+        if (isOutLikeParameter(parameter.rawText)) {
+          const hasWrite = hasParameterEvent(
+            fn,
+            parameter.name,
+            "write",
+            parameter.endOffset,
+            parameter.scopeId
+          );
+          if (hasWrite) {
+            continue;
+          }
         }
 
         issues.push({
@@ -56,3 +63,24 @@ export const noUnusedParamsRule: LintRule = {
     return issues;
   }
 };
+
+function hasParameterEvent(
+  fn: ReturnType<typeof collectFunctionModels>[number],
+  name: string,
+  kind: "read" | "write",
+  afterOffset: number,
+  scopeId: number
+): boolean {
+  return fn.events.some(
+    (event) =>
+      event.name === name &&
+      event.kind === kind &&
+      event.startOffset > afterOffset &&
+      isScopeSelfOrDescendant(fn.scopes, event.scopeId, scopeId)
+  );
+}
+
+function isOutLikeParameter(rawText: string): boolean {
+  const compact = rawText.replace(/\s+/g, " ");
+  return /\b(?:out|inout)\b/i.test(compact);
+}
