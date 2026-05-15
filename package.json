@@ -66,7 +66,18 @@
           "type": "string",
           "default": "recommended",
           "enum": ["custom", "recommended", "strict"],
-          "description": "Rule preset profile. Use custom to control all per-rule settings."
+          "description": "Rule preset profile. Explicit per-rule settings override the active profile."
+        },
+        "openplanetAngelscriptLinter.rules.preprocessor.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag invalid or unknown Openplanet preprocessor directives and defines."
+        },
+        "openplanetAngelscriptLinter.rules.preprocessor.severity": {
+          "type": "string",
+          "default": "error",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for preprocessor diagnostics."
         },
         "openplanetAngelscriptLinter.rules.noTodoComments.enable": {
           "type": "boolean",
@@ -233,6 +244,17 @@
           "enum": ["error", "warning", "info", "hint"],
           "description": "Severity for const-correctness diagnostics."
         },
+        "openplanetAngelscriptLinter.rules.noUnguardedOptionalDependency.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Flag obvious uses of optional dependency namespaces/imports outside matching DEPENDENCY_* guards."
+        },
+        "openplanetAngelscriptLinter.rules.noUnguardedOptionalDependency.severity": {
+          "type": "string",
+          "default": "warning",
+          "enum": ["error", "warning", "info", "hint"],
+          "description": "Severity for unguarded optional dependency diagnostics."
+        },
         "openplanetAngelscriptLinter.rules.noRiskyHandleCast.enable": {
           "type": "boolean",
           "default": true,
@@ -255,6 +277,9 @@
     "release:package": "node scripts/release/packageVsix.mjs",
     "release:verify": "npm run -s test",
     "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "openplanet-angelscript-core": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

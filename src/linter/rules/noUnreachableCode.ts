@@ -37,6 +37,9 @@ export const noUnreachableCodeRule: LintRule = {
         if (unreachableDepth !== null && isReachabilityResetLine(trimmed)) {
           unreachableDepth = null;
         }
+        if (unreachableDepth !== null && isPreprocessorReachabilityBoundaryLine(trimmed)) {
+          unreachableDepth = null;
+        }
 
         if (unreachableDepth !== null && isExecutableLine(trimmed)) {
           const startCharacter = firstNonWhitespaceIndex(line.codeText);
@@ -89,6 +92,10 @@ function isReachabilityResetLine(trimmed: string): boolean {
   }
 
   return /^(?:}\s*)?(?:else\b|catch\b|finally\b)/.test(trimmed);
+}
+
+function isPreprocessorReachabilityBoundaryLine(trimmed: string): boolean {
+  return /^#\s*(?:elif\b|else\b|endif\b)/.test(trimmed);
 }
 
 function isUnconditionalTerminatorLine(trimmed: string): boolean {

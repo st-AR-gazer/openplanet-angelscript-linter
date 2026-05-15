@@ -1,5 +1,6 @@
 import { collectDocumentModel } from "../functionModel";
 import { createRange } from "../range";
+import { isLineInactive } from "../environment";
 import type { LintIssue, LintRule, LintRuleContext, TextRange } from "../types";
 
 export const noDuplicateIncludesRule: LintRule = {
@@ -11,6 +12,10 @@ export const noDuplicateIncludesRule: LintRule = {
     const firstByPath = new Map<string, number>();
 
     for (const include of documentModel.includes) {
+      if (isLineInactive(context.environment.preprocessor, include.line)) {
+        continue;
+      }
+
       const firstLine = firstByPath.get(include.normalizedPath);
       if (firstLine === undefined) {
         firstByPath.set(include.normalizedPath, include.line);

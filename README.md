@@ -19,6 +19,7 @@ Current rules:
 - `noDuplicateIncludes`: flags duplicate `#include "..."` directives
 - `noDuplicateImports`: flags duplicate `import ... from "..."` declarations
 - `preferConstLocals`: flags initialized locals that are never reassigned
+- `noUnguardedOptionalDependency`: flags optional dependency namespace/import/exported-symbol uses outside matching `DEPENDENCY_*` guards
 - `noRiskyHandleCast`: flags `cast<...@>(...)` handle casts that should be null-guarded
 
 Quick fixes:
@@ -69,3 +70,7 @@ Checked-in corpus:
 
 - `test-files/linter-corpus/medium-corpus.as`
 - snapshot expectation: `test-files/linter-corpus/medium-corpus.snapshot.json`
+
+Planning and audit notes:
+
+- `docs/capability-matrix.md` tracks doc-backed rule coverage, known false-positive risks, and prioritized linter foundations.

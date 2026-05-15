@@ -1,6 +1,6 @@
 import {
   collectFunctionModels,
-  isScopeSelfOrDescendant,
+  isLocalVisibleAtOffset,
   type SymbolEvent
 } from "../functionModel";
 import { createRange } from "../range";
@@ -25,7 +25,7 @@ export const noDeadStoreRule: LintRule = {
             (event) =>
               event.name === local.name &&
               event.startOffset >= local.startOffset &&
-              isScopeSelfOrDescendant(fn.scopes, event.scopeId, local.scopeId)
+              isLocalVisibleAtOffset(fn, local, event.scopeId, event.startOffset)
           )
           .sort((left, right) => left.startOffset - right.startOffset);
 

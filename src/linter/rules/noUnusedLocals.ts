@@ -1,7 +1,7 @@
 import { createRange } from "../range";
 import {
   collectFunctionModels,
-  isScopeSelfOrDescendant
+  isLocalVisibleAtOffset
 } from "../functionModel";
 import type { LintIssue, LintRule, LintRuleContext } from "../types";
 
@@ -23,7 +23,7 @@ export const noUnusedLocalsRule: LintRule = {
             event.name === local.name &&
             event.kind === "read" &&
             event.startOffset > local.endOffset &&
-            isScopeSelfOrDescendant(fn.scopes, event.scopeId, local.scopeId)
+            isLocalVisibleAtOffset(fn, local, event.scopeId, event.startOffset)
         );
         if (hasRead) {
           continue;

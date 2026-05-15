@@ -14,9 +14,11 @@ import { noUnreachableCodeRule } from "./rules/noUnreachableCode";
 import { noUnusedLocalsRule } from "./rules/noUnusedLocals";
 import { noUnusedParamsRule } from "./rules/noUnusedParams";
 import { preferConstLocalsRule } from "./rules/preferConstLocals";
+import { noUnguardedOptionalDependencyRule } from "./rules/noUnguardedOptionalDependency";
+import { buildLinterEnvironment, isLineInactive } from "./environment";
 import { scanDocument } from "./scan";
 import { isSuppressed, parseSuppressions } from "./suppressions";
-import type { LintIssue, LintRule, LinterSettings } from "./types";
+import type { LintIssue, LintRule, LinterRunOptions, LinterSettings } from "./types";
 
 const rules: LintRule[] = [
   noTodoCommentsRule,
@@ -34,12 +36,14 @@ const rules: LintRule[] = [
   noDuplicateIncludesRule,
   noDuplicateImportsRule,
   preferConstLocalsRule,
+  noUnguardedOptionalDependencyRule,
   noRiskyHandleCastRule
 ];
 
 export function runLinter(
   text: string,
-  settings: LinterSettings
+  settings: LinterSettings,
+  options?: LinterRunOptions
 ): LintIssue[] {
   if (!settings.enable) {
     return [];
@@ -47,7 +51,36 @@ export function runLinter(
 
   const suppressions = parseSuppressions(text);
   const scan = scanDocument(text);
+  const environment = buildLinterEnvironment(scan, options);
   const allIssues: LintIssue[] = [];
+  const preprocessorSettings = settings.rules.preprocessor;
+
+  if (preprocessorSettings.enable) {
+    for (const diagnostic of environment.preprocessor.diagnostics) {
+      const issue: LintIssue = {
+        ruleId: "preprocessor",
+        message: diagnostic.message,
+        range: {
+          start: {
+            line: diagnostic.line,
+            character: diagnostic.character
+          },
+          end: {
+            line: diagnostic.line,
+            character: diagnostic.endCharacter
+          }
+        },
+        severity: preprocessorSettings.severity
+      };
+      if (isSuppressed(suppressions, issue.ruleId, issue.range.start.line)) {
+        continue;
+      }
+      allIssues.push(issue);
+      if (allIssues.length >= settings.maxDiagnostics) {
+        return allIssues;
+      }
+    }
+  }
 
   for (const rule of rules) {
     const ruleSettings = settings.rules[rule.id];
@@ -59,10 +92,14 @@ export function runLinter(
       text,
       settings,
       suppressions,
-      scan
+      scan,
+      environment
     });
 
     for (const issue of ruleIssues) {
+      if (isLineInactive(environment.preprocessor, issue.range.start.line)) {
+        continue;
+      }
       if (isSuppressed(suppressions, issue.ruleId, issue.range.start.line)) {
         continue;
       }

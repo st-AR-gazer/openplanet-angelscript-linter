@@ -1,5 +1,6 @@
 import { collectDocumentModel } from "../functionModel";
 import { createRange } from "../range";
+import { isLineInactive } from "../environment";
 import type { LintIssue, LintRule, LintRuleContext, TextRange } from "../types";
 
 export const noDuplicateImportsRule: LintRule = {
@@ -11,9 +12,17 @@ export const noDuplicateImportsRule: LintRule = {
     const firstByImport = new Map<string, number>();
 
     for (const importDirective of documentModel.imports) {
-      const firstLine = firstByImport.get(importDirective.normalizedDeclaration);
+      if (isLineInactive(context.environment.preprocessor, importDirective.line)) {
+        continue;
+      }
+
+      const duplicateKey = [
+        importDirective.namespacePath.toLowerCase(),
+        importDirective.normalizedDeclaration
+      ].join("|");
+      const firstLine = firstByImport.get(duplicateKey);
       if (firstLine === undefined) {
-        firstByImport.set(importDirective.normalizedDeclaration, importDirective.line);
+        firstByImport.set(duplicateKey, importDirective.line);
         continue;
       }
 

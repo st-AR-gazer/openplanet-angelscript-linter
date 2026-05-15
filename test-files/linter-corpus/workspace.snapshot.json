@@ -2,6 +2,7 @@
   "totalFiles": 2,
   "totalIssues": 14,
   "aggregateRuleCounts": {
+    "preprocessor": 0,
     "noTodoComments": 0,
     "noDebugCalls": 1,
     "noAutoType": 0,
@@ -17,6 +18,7 @@
     "noDuplicateIncludes": 1,
     "noDuplicateImports": 1,
     "preferConstLocals": 2,
+    "noUnguardedOptionalDependency": 0,
     "noRiskyHandleCast": 1
   },
   "files": [
@@ -24,6 +26,7 @@
       "fileName": "file-a.as",
       "totalIssues": 10,
       "ruleCounts": {
+        "preprocessor": 0,
         "noTodoComments": 0,
         "noDebugCalls": 1,
         "noAutoType": 0,
@@ -39,6 +42,7 @@
         "noDuplicateIncludes": 1,
         "noDuplicateImports": 0,
         "preferConstLocals": 1,
+        "noUnguardedOptionalDependency": 0,
         "noRiskyHandleCast": 0
       },
       "issues": [
@@ -118,6 +122,7 @@
       "fileName": "file-b.as",
       "totalIssues": 4,
       "ruleCounts": {
+        "preprocessor": 0,
         "noTodoComments": 0,
         "noDebugCalls": 0,
         "noAutoType": 0,
@@ -133,6 +138,7 @@
         "noDuplicateIncludes": 0,
         "noDuplicateImports": 1,
         "preferConstLocals": 1,
+        "noUnguardedOptionalDependency": 0,
         "noRiskyHandleCast": 1
       },
       "issues": [

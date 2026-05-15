@@ -1,11 +1,17 @@
 import { createRange } from "../range";
-import { collectFunctionModels } from "../functionModel";
+import {
+  collectFunctionModels,
+  isScopeSelfOrDescendant,
+  type FunctionModel,
+  type LocalDeclaration
+} from "../functionModel";
 import type { LintIssue, LintRule, LintRuleContext } from "../types";
 
 interface ScopedBinding {
   name: string;
-  depth: number;
   startOffset: number;
+  scopeId: number;
+  scopeEndOffset: number;
 }
 
 export const noShadowingRule: LintRule = {
@@ -16,10 +22,13 @@ export const noShadowingRule: LintRule = {
     const functions = collectFunctionModels(context.scan);
 
     for (const fn of functions) {
+      const rootScopeEndOffset = fn.scopes.find((scope) => scope.id === 1)?.endOffset ??
+        fn.bodyEndOffset;
       const bindings: ScopedBinding[] = fn.params.map((parameter) => ({
         name: parameter.name,
-        depth: 1,
-        startOffset: parameter.startOffset
+        startOffset: parameter.startOffset,
+        scopeId: parameter.scopeId,
+        scopeEndOffset: rootScopeEndOffset
       }));
 
       const locals = [...fn.locals].sort(
@@ -30,11 +39,8 @@ export const noShadowingRule: LintRule = {
           continue;
         }
 
-        const shadows = bindings.some(
-          (binding) =>
-            binding.name === local.name &&
-            binding.startOffset < local.startOffset &&
-            binding.depth < local.depth
+        const shadows = bindings.some((binding) =>
+          isVisibleOuterBinding(fn, binding, local)
         );
         if (shadows) {
           issues.push({
@@ -62,8 +68,9 @@ export const noShadowingRule: LintRule = {
 
         bindings.push({
           name: local.name,
-          depth: local.depth,
-          startOffset: local.startOffset
+          startOffset: local.startOffset,
+          scopeId: local.scopeId,
+          scopeEndOffset: local.scopeEndOffset ?? findScopeEndOffset(fn, local.scopeId)
         });
       }
     }
@@ -71,3 +78,27 @@ export const noShadowingRule: LintRule = {
     return issues;
   }
 };
+
+function isVisibleOuterBinding(
+  fn: FunctionModel,
+  binding: ScopedBinding,
+  local: LocalDeclaration
+): boolean {
+  if (binding.name !== local.name) {
+    return false;
+  }
+  if (binding.startOffset >= local.startOffset) {
+    return false;
+  }
+  if (binding.scopeId === local.scopeId) {
+    return false;
+  }
+  if (binding.scopeEndOffset <= local.startOffset) {
+    return false;
+  }
+  return isScopeSelfOrDescendant(fn.scopes, local.scopeId, binding.scopeId);
+}
+
+function findScopeEndOffset(fn: FunctionModel, scopeId: number): number {
+  return fn.scopes.find((scope) => scope.id === scopeId)?.endOffset ?? fn.bodyEndOffset;
+}

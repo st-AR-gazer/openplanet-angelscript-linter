@@ -1,6 +1,6 @@
 import {
   collectFunctionModels,
-  isScopeSelfOrDescendant
+  isLocalVisibleAtOffset
 } from "../functionModel";
 import { createRange } from "../range";
 import { positionFromOffset } from "../scan";
@@ -43,7 +43,7 @@ export const preferConstLocalsRule: LintRule = {
             event.kind === "write" &&
             !event.isInitialization &&
             event.startOffset > local.startOffset &&
-            isScopeSelfOrDescendant(fn.scopes, event.scopeId, local.scopeId)
+            isLocalVisibleAtOffset(fn, local, event.scopeId, event.startOffset)
         );
         if (hasWriteAfterInitialization) {
           continue;

@@ -1,6 +1,7 @@
 {
   "totalIssues": 27,
   "ruleCounts": {
+    "preprocessor": 0,
     "noTodoComments": 1,
     "noDebugCalls": 1,
     "noAutoType": 1,
@@ -16,6 +17,7 @@
     "noDuplicateIncludes": 1,
     "noDuplicateImports": 1,
     "preferConstLocals": 4,
+    "noUnguardedOptionalDependency": 0,
     "noRiskyHandleCast": 1
   },
   "issues": [

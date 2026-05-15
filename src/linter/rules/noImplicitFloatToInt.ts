@@ -1,7 +1,11 @@
 import {
+  isIntegerTypeName,
+  parseTypeDescriptor,
+  type SemanticTypeRegistry
+} from "openplanet-angelscript-core";
+import {
   collectFunctionModels,
   containsFloatLiteral,
-  hasExplicitIntegerCast,
   isIntegerTypeText
 } from "../functionModel";
 import { createRange } from "../range";
@@ -40,7 +44,10 @@ export const noImplicitFloatToIntRule: LintRule = {
           if (
             knownIntegerBindings.has(assignment.name) &&
             containsFloatLiteral(assignment.expressionText) &&
-            !hasExplicitIntegerCast(assignment.expressionText)
+            !hasExplicitIntegerConversion(
+              assignment.expressionText,
+              context.environment.semanticTypes
+            )
           ) {
             issues.push({
               ruleId: this.id,
@@ -62,7 +69,10 @@ export const noImplicitFloatToIntRule: LintRule = {
           if (
             local.initializerText &&
             containsFloatLiteral(local.initializerText) &&
-            !hasExplicitIntegerCast(local.initializerText)
+            !hasExplicitIntegerConversion(
+              local.initializerText,
+              context.environment.semanticTypes
+            )
           ) {
             const issuePosition = local.initializerOffset
               ? positionFromOffset(context.scan, local.initializerOffset)
@@ -87,7 +97,10 @@ export const noImplicitFloatToIntRule: LintRule = {
         if (
           knownIntegerBindings.has(assignment.name) &&
           containsFloatLiteral(assignment.expressionText) &&
-          !hasExplicitIntegerCast(assignment.expressionText)
+          !hasExplicitIntegerConversion(
+            assignment.expressionText,
+            context.environment.semanticTypes
+          )
         ) {
           issues.push({
             ruleId: this.id,
@@ -113,8 +126,11 @@ export const noImplicitFloatToIntRule: LintRule = {
       while ((returnMatch = returnPattern.exec(fn.bodyText)) !== null) {
         const expressionText = returnMatch[1].trim();
         if (
-          !containsFloatLiteral(expressionText) ||
-          hasExplicitIntegerCast(expressionText)
+          !containsTopLevelFloatLiteral(expressionText) ||
+          hasExplicitIntegerConversion(
+            expressionText,
+            context.environment.semanticTypes
+          )
         ) {
           continue;
         }
@@ -139,3 +155,112 @@ export const noImplicitFloatToIntRule: LintRule = {
     return issues;
   }
 };
+
+function hasExplicitIntegerConversion(
+  expressionText: string,
+  semanticTypes: SemanticTypeRegistry
+): boolean {
+  const patterns = [
+    /\bcast\s*<\s*([^>]+?)\s*>/g,
+    /\(\s*([A-Za-z_][A-Za-z0-9_:<>@&\[\]\s]*)\s*\)/g,
+    /\b([A-Za-z_][A-Za-z0-9_:]*)\s*\(/g
+  ];
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(expressionText)) !== null) {
+      const typeText = match[1]?.trim();
+      if (!typeText) {
+        continue;
+      }
+      const descriptor = parseTypeDescriptor(typeText, semanticTypes);
+      if (descriptor && isIntegerTypeName(descriptor.normalized)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function containsTopLevelFloatLiteral(expressionText: string): boolean {
+  const text = expressionText.trim();
+  if (!text) {
+    return false;
+  }
+
+  let topLevelText = "";
+  let parenDepth = 0;
+  let bracketDepth = 0;
+  let braceDepth = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let escapeNext = false;
+
+  for (let cursor = 0; cursor < text.length; cursor += 1) {
+    const ch = text[cursor];
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    if (inSingleQuote || inDoubleQuote) {
+      if (ch === "\\") {
+        escapeNext = true;
+      } else if (inSingleQuote && ch === "'") {
+        inSingleQuote = false;
+      } else if (inDoubleQuote && ch === "\"") {
+        inDoubleQuote = false;
+      }
+      continue;
+    }
+
+    if (ch === "'") {
+      inSingleQuote = true;
+      continue;
+    }
+    if (ch === "\"") {
+      inDoubleQuote = true;
+      continue;
+    }
+    if (ch === "(") {
+      parenDepth += 1;
+      continue;
+    }
+    if (ch === ")") {
+      if (parenDepth > 0) {
+        parenDepth -= 1;
+      }
+      continue;
+    }
+    if (ch === "[") {
+      bracketDepth += 1;
+      continue;
+    }
+    if (ch === "]") {
+      if (bracketDepth > 0) {
+        bracketDepth -= 1;
+      }
+      continue;
+    }
+    if (ch === "{") {
+      braceDepth += 1;
+      continue;
+    }
+    if (ch === "}") {
+      if (braceDepth > 0) {
+        braceDepth -= 1;
+      }
+      continue;
+    }
+
+    if (
+      parenDepth === 0 &&
+      bracketDepth === 0 &&
+      braceDepth === 0
+    ) {
+      topLevelText += ch;
+    }
+  }
+
+  return containsFloatLiteral(topLevelText);
+}

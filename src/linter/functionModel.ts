@@ -25,6 +25,7 @@ export interface LocalDeclaration {
   scopeId: number;
   declarationStartOffset: number;
   typeStartOffset: number;
+  scopeEndOffset?: number;
   initializerText?: string;
   initializerOffset?: number;
   isConst: boolean;
@@ -57,6 +58,15 @@ export interface CastRecord {
   character: number;
 }
 
+export interface FunctionStatement {
+  text: string;
+  startOffset: number;
+  endOffset: number;
+  line: number;
+  character: number;
+  scopeId: number;
+}
+
 export interface ScopeModel {
   id: number;
   parentId: number | null;
@@ -74,6 +84,7 @@ export interface IncludeDirective {
 }
 
 export interface ImportDirective {
+  namespacePath: string;
   source: string;
   normalizedSource: string;
   declarationText: string;
@@ -96,6 +107,7 @@ export interface FunctionModel {
   assignments: AssignmentRecord[];
   events: SymbolEvent[];
   casts: CastRecord[];
+  statements: FunctionStatement[];
   scopes: ScopeModel[];
 }
 
@@ -294,7 +306,7 @@ export function collectDocumentModel(scan: ScannedDocument): DocumentModel {
   const model: DocumentModel = {
     functions: parseFunctions(scan, tokens, parenPairs, bracePairs),
     includes: parseIncludeDirectives(scan),
-    imports: parseImportDirectives(scan)
+    imports: parseImportDirectives(scan, tokens, bracePairs)
   };
   modelCache.set(scan, model);
   return model;
@@ -351,7 +363,8 @@ export function containsFloatLiteral(text: string): boolean {
 export function hasExplicitIntegerCast(text: string): boolean {
   return (
     /\bcast\s*<\s*(?:u?int(?:8|16|32|64)?|uint(?:8|16|32|64)?)\s*>/i.test(text) ||
-    /\(\s*(?:u?int(?:8|16|32|64)?|uint(?:8|16|32|64)?)\s*\)/i.test(text)
+    /\(\s*(?:u?int(?:8|16|32|64)?|uint(?:8|16|32|64)?)\s*\)/i.test(text) ||
+    /\b(?:u?int(?:8|16|32|64)?|uint(?:8|16|32|64)?)\s*\(/i.test(text)
   );
 }
 
@@ -371,6 +384,27 @@ export function isScopeSelfOrDescendant(
     current = scopes.find((scope) => scope.id === current?.parentId);
   }
   return false;
+}
+
+export function isLocalVisibleAtOffset(
+  fn: FunctionModel,
+  local: LocalDeclaration,
+  scopeId: number,
+  offset: number
+): boolean {
+  if (offset < local.startOffset) {
+    return false;
+  }
+
+  const scopeEndOffset =
+    local.scopeEndOffset ??
+    fn.scopes.find((scope) => scope.id === local.scopeId)?.endOffset ??
+    fn.bodyEndOffset;
+  if (offset >= scopeEndOffset) {
+    return false;
+  }
+
+  return isScopeSelfOrDescendant(fn.scopes, scopeId, local.scopeId);
 }
 
 function parseFunctions(
@@ -451,6 +485,7 @@ function parseFunctions(
       assignments: bodyAnalysis.assignments,
       events: bodyAnalysis.events,
       casts: bodyAnalysis.casts,
+      statements: bodyAnalysis.statements,
       scopes: bodyAnalysis.scopes
     });
 
@@ -481,8 +516,13 @@ function parseIncludeDirectives(scan: ScannedDocument): IncludeDirective[] {
   return directives;
 }
 
-function parseImportDirectives(scan: ScannedDocument): ImportDirective[] {
+function parseImportDirectives(
+  scan: ScannedDocument,
+  tokens: LexToken[],
+  bracePairs: PairMaps
+): ImportDirective[] {
   const directives: ImportDirective[] = [];
+  const namespaceRanges = collectNamespaceRanges(tokens, bracePairs);
   for (const line of scan.lines) {
     const match = importPattern.exec(line.rawText);
     if (!match) {
@@ -493,7 +533,9 @@ function parseImportDirectives(scan: ScannedDocument): ImportDirective[] {
     const normalizedDeclaration = declarationText.replace(/\s+/g, " ").toLowerCase();
     const character = line.rawText.indexOf("import");
     const startOffset = (scan.lineOffsets[line.lineNumber] ?? 0) + Math.max(0, character);
+    const namespacePath = getNamespacePathAtOffset(namespaceRanges, startOffset);
     directives.push({
+      namespacePath,
       source,
       normalizedSource: normalizeDirectivePath(source),
       declarationText,
@@ -504,6 +546,12 @@ function parseImportDirectives(scan: ScannedDocument): ImportDirective[] {
     });
   }
   return directives;
+}
+
+interface NamespaceRange {
+  fullPath: string;
+  bodyStartOffset: number;
+  bodyEndOffset: number;
 }
 
 function tokenize(text: string): LexToken[] {
@@ -627,6 +675,96 @@ function buildPairMaps(tokens: LexToken[], open: string, close: string): PairMap
   };
 }
 
+function collectNamespaceRanges(
+  tokens: LexToken[],
+  bracePairs: PairMaps
+): NamespaceRange[] {
+  const ranges: NamespaceRange[] = [];
+  collectNamespaceRangesRecursive(tokens, bracePairs, 0, tokens.length - 1, "", ranges);
+  return ranges;
+}
+
+function collectNamespaceRangesRecursive(
+  tokens: LexToken[],
+  bracePairs: PairMaps,
+  startIndex: number,
+  endIndex: number,
+  parentPath: string,
+  output: NamespaceRange[]
+): void {
+  for (let index = startIndex; index <= endIndex; index += 1) {
+    const token = tokens[index];
+    if (!token || token.kind !== "keyword" || token.value !== "namespace") {
+      continue;
+    }
+
+    const nameToken = tokens[index + 1];
+    if (
+      !nameToken ||
+      (nameToken.kind !== "identifier" && nameToken.kind !== "keyword")
+    ) {
+      continue;
+    }
+
+    const openBraceIndex = findNextTokenIndex(tokens, index + 2, endIndex, "{");
+    if (openBraceIndex < 0) {
+      continue;
+    }
+    const closeBraceIndex = bracePairs.openToClose.get(openBraceIndex);
+    if (closeBraceIndex === undefined || closeBraceIndex > endIndex) {
+      continue;
+    }
+
+    const fullPath = parentPath ? `${parentPath}::${nameToken.value}` : nameToken.value;
+    output.push({
+      fullPath,
+      bodyStartOffset: tokens[openBraceIndex].startOffset,
+      bodyEndOffset: tokens[closeBraceIndex].endOffset
+    });
+    collectNamespaceRangesRecursive(
+      tokens,
+      bracePairs,
+      openBraceIndex + 1,
+      closeBraceIndex - 1,
+      fullPath,
+      output
+    );
+    index = closeBraceIndex;
+  }
+}
+
+function findNextTokenIndex(
+  tokens: LexToken[],
+  startIndex: number,
+  endIndex: number,
+  value: string
+): number {
+  for (let index = startIndex; index <= endIndex; index += 1) {
+    if (tokens[index]?.value === value) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function getNamespacePathAtOffset(
+  namespaceRanges: readonly NamespaceRange[],
+  offset: number
+): string {
+  let best = "";
+  let bestLength = -1;
+  for (const range of namespaceRanges) {
+    if (offset <= range.bodyStartOffset || offset >= range.bodyEndOffset) {
+      continue;
+    }
+    if (range.fullPath.length > bestLength) {
+      best = range.fullPath;
+      bestLength = range.fullPath.length;
+    }
+  }
+  return best;
+}
+
 function parseParameters(
   scan: ScannedDocument,
   tokens: LexToken[],
@@ -706,12 +844,14 @@ function analyzeFunctionBody(
   assignments: AssignmentRecord[];
   events: SymbolEvent[];
   casts: CastRecord[];
+  statements: FunctionStatement[];
   scopes: ScopeModel[];
 } {
   const locals: LocalDeclaration[] = [];
   const assignments: AssignmentRecord[] = [];
   const events: SymbolEvent[] = [];
   const casts: CastRecord[] = [];
+  const statements: FunctionStatement[] = [];
 
   const scopes: ScopeModel[] = [];
   let nextScopeId = 1;
@@ -797,11 +937,26 @@ function analyzeFunctionBody(
     const statementText = scan.codeText.slice(statementStart, statementEnd);
     const scopeId = statement.scopeId;
     const scopeDepth = scopes.find((item) => item.id === scopeId)?.depth ?? 1;
+    const trimmedStatement = statementText.trim();
+
+    if (trimmedStatement.length > 0) {
+      const position = positionFromOffset(scan, statementStart);
+      statements.push({
+        text: statementText,
+        startOffset: statementStart,
+        endOffset: statementEnd,
+        line: position.line,
+        character: position.character,
+        scopeId
+      });
+    }
 
     const forLoopLocals = parseForLoopInitializerDeclarations(
       scan,
+      tokens,
       statementText,
       statementStart,
+      statement.end,
       scopeId,
       scopeDepth
     );
@@ -834,6 +989,37 @@ function analyzeFunctionBody(
             )
           );
         }
+      }
+      collectCastRecords(scan, statementText, statementStart, casts);
+    }
+
+    const foreachLocals = parseForeachLoopDeclarations(
+      scan,
+      tokens,
+      statementText,
+      statementStart,
+      statement.end,
+      scopeId,
+      scopeDepth
+    );
+    if (foreachLocals.length > 0) {
+      for (const local of foreachLocals) {
+        const alreadyKnown = locals.some(
+          (existing) => existing.startOffset === local.startOffset
+        );
+        if (alreadyKnown) {
+          continue;
+        }
+        locals.push(local);
+        events.push({
+          name: local.name,
+          kind: "write",
+          startOffset: local.startOffset,
+          line: local.line,
+          character: local.character,
+          scopeId,
+          isInitialization: true
+        });
       }
       collectCastRecords(scan, statementText, statementStart, casts);
     }
@@ -933,7 +1119,6 @@ function analyzeFunctionBody(
       continue;
     }
 
-    const trimmedStatement = statementText.trim();
     if (trimmedStatement.length > 0) {
       events.push(
         ...extractIdentifierEvents(scan, statementText, statementStart, "read", scopeId)
@@ -985,14 +1170,17 @@ function analyzeFunctionBody(
     assignments,
     events,
     casts,
+    statements,
     scopes
   };
 }
 
 function parseForLoopInitializerDeclarations(
   scan: ScannedDocument,
+  tokens: LexToken[],
   statementText: string,
   statementStartOffset: number,
+  statementEndTokenIndex: number,
   scopeId: number,
   scopeDepth: number
 ): LocalDeclaration[] {
@@ -1034,12 +1222,16 @@ function parseForLoopInitializerDeclarations(
     endOffset: token.endOffset + initializerBaseOffset
   }));
   if (initializerTokens.length < 2) {
-    return parseDeclarationsFromTextFallback(
-      scan,
-      initializerText,
-      initializerBaseOffset,
-      scopeId,
-      scopeDepth
+    return withLoopScopeEndOffset(
+      parseDeclarationsFromTextFallback(
+        scan,
+        initializerText,
+        initializerBaseOffset,
+        scopeId,
+        scopeDepth
+      ),
+      tokens,
+      statementEndTokenIndex
     );
   }
 
@@ -1050,16 +1242,151 @@ function parseForLoopInitializerDeclarations(
     scopeDepth
   );
   if (parsed.length > 0) {
-    return parsed;
+    return withLoopScopeEndOffset(parsed, tokens, statementEndTokenIndex);
   }
 
-  return parseDeclarationsFromTextFallback(
-    scan,
-    initializerText,
-    initializerBaseOffset,
-    scopeId,
-    scopeDepth
+  return withLoopScopeEndOffset(
+    parseDeclarationsFromTextFallback(
+      scan,
+      initializerText,
+      initializerBaseOffset,
+      scopeId,
+      scopeDepth
+    ),
+    tokens,
+    statementEndTokenIndex
   );
+}
+
+function parseForeachLoopDeclarations(
+  scan: ScannedDocument,
+  tokens: LexToken[],
+  statementText: string,
+  statementStartOffset: number,
+  statementEndTokenIndex: number,
+  scopeId: number,
+  scopeDepth: number
+): LocalDeclaration[] {
+  const foreachMatch = /\bforeach\s*\(/.exec(statementText);
+  if (!foreachMatch) {
+    return [];
+  }
+
+  const openParenInStatement =
+    foreachMatch.index + foreachMatch[0].lastIndexOf("(");
+  const closeParenInStatement = findMatchingParenInText(
+    statementText,
+    openParenInStatement
+  );
+  if (closeParenInStatement < 0) {
+    return [];
+  }
+
+  const headerText = statementText.slice(
+    openParenInStatement + 1,
+    closeParenInStatement
+  );
+  const headerSegments = splitTopLevelText(headerText, ":");
+  if (headerSegments.length < 2) {
+    return [];
+  }
+
+  const variableList = headerSegments[0];
+  const variableSegments = splitTopLevelText(variableList.text, ",");
+  const locals: LocalDeclaration[] = [];
+  const variableBaseOffset =
+    statementStartOffset + openParenInStatement + 1 + variableList.start;
+  const scopeEndOffset = findLoopStatementEndOffset(tokens, statementEndTokenIndex);
+
+  for (const segment of variableSegments) {
+    const segmentText = segment.text;
+    if (!segmentText.trim()) {
+      continue;
+    }
+    const segmentBaseOffset = variableBaseOffset + segment.start;
+    const segmentTokens = tokenize(segmentText).map((token) => ({
+      ...token,
+      startOffset: token.startOffset + segmentBaseOffset,
+      endOffset: token.endOffset + segmentBaseOffset
+    }));
+    const nameToken = findLastNonKeywordIdentifierToken(segmentTokens);
+    const firstToken = segmentTokens[0];
+    if (!nameToken || !firstToken || nameToken.startOffset <= firstToken.startOffset) {
+      continue;
+    }
+
+    const typeText = scan.codeText.slice(firstToken.startOffset, nameToken.startOffset).trim();
+    if (!typeText) {
+      continue;
+    }
+
+    const position = positionFromOffset(scan, nameToken.startOffset);
+    locals.push({
+      name: nameToken.value,
+      typeText,
+      startOffset: nameToken.startOffset,
+      endOffset: nameToken.endOffset,
+      line: position.line,
+      character: position.character,
+      depth: scopeDepth,
+      scopeId,
+      declarationStartOffset: firstToken.startOffset,
+      typeStartOffset: firstToken.startOffset,
+      scopeEndOffset,
+      isConst: /\bconst\b/i.test(typeText)
+    });
+  }
+
+  return locals;
+}
+
+function findLastNonKeywordIdentifierToken(tokens: LexToken[]): LexToken | undefined {
+  for (let index = tokens.length - 1; index >= 0; index -= 1) {
+    const token = tokens[index];
+    if (token?.kind === "identifier" && !keywordSet.has(token.value)) {
+      return token;
+    }
+  }
+  return undefined;
+}
+
+function withLoopScopeEndOffset(
+  locals: LocalDeclaration[],
+  tokens: LexToken[],
+  statementEndTokenIndex: number
+): LocalDeclaration[] {
+  if (locals.length === 0) {
+    return locals;
+  }
+
+  const scopeEndOffset = findLoopStatementEndOffset(tokens, statementEndTokenIndex);
+  return locals.map((local) => ({
+    ...local,
+    scopeEndOffset
+  }));
+}
+
+function findLoopStatementEndOffset(
+  tokens: LexToken[],
+  statementEndTokenIndex: number
+): number {
+  const statementEndToken = tokens[statementEndTokenIndex];
+  if (!statementEndToken) {
+    return 0;
+  }
+
+  const nextToken = tokens[statementEndTokenIndex + 1];
+  if (nextToken?.value !== "{") {
+    return statementEndToken.endOffset;
+  }
+
+  const closeBraceIndex = findMatchingTokenIndex(
+    tokens,
+    statementEndTokenIndex + 1,
+    "{",
+    "}"
+  );
+  return tokens[closeBraceIndex]?.endOffset ?? statementEndToken.endOffset;
 }
 
 function parseDeclarationsFromStatement(

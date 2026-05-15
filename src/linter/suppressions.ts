@@ -10,6 +10,8 @@ const disableStartDirectivePattern =
   /^\s*\/\/\s*oplint-disable-start(?:\s+([A-Za-z0-9_*,-\s]+))?\s*$/i;
 const disableEndDirectivePattern =
   /^\s*\/\/\s*oplint-disable-end(?:\s+([A-Za-z0-9_*,-\s]+))?\s*$/i;
+const ignoredRegionStartPattern = /^\s*\/\/\/<\s*$/;
+const ignoredRegionEndPattern = /^\s*\/\/\/>\s*$/;
 
 export function parseSuppressions(text: string): RuleSuppressions {
   const lines = text.replace(/\r/g, "").split("\n");
@@ -41,6 +43,16 @@ export function parseSuppressions(text: string): RuleSuppressions {
           parseRuleIdSet(disableNext[1])
         );
       }
+      continue;
+    }
+
+    if (ignoredRegionStartPattern.test(lineText)) {
+      incrementRuleCounts(activeBlockCounts, new Set<string>(["*"]));
+      continue;
+    }
+
+    if (ignoredRegionEndPattern.test(lineText)) {
+      decrementRuleCounts(activeBlockCounts, new Set<string>(["*"]));
       continue;
     }
 

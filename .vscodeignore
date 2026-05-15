@@ -6,6 +6,7 @@ tsconfig.json
 out/test/**
 test-files/**
 node_modules/**
+out/node_modules/openplanet-angelscript-core/out/test/**
 package-lock.json
 .gitignore
 ../**

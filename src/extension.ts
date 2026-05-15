@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
+import fs from "node:fs";
+import path from "node:path";
 import { runLinter } from "./linter/engine";
 import { getLinterSettings } from "./linter/settings";
-import type { LintIssue, LintSeverity, TextRange } from "./linter/types";
+import type { LinterRunOptions, LintIssue, LintSeverity, TextRange } from "./linter/types";
 
 const lintCollectionName = "openplanet-angelscript-linter";
 const lintDebounceMs = 150;
@@ -148,7 +150,7 @@ function lintDocument(document: vscode.TextDocument): void {
     return;
   }
 
-  const issues = runLinter(document.getText(), settings);
+  const issues = runLinter(document.getText(), settings, buildRunOptions(document));
   cachedIssuesByUri.set(document.uri.toString(), issues);
   const diagnostics = issues.map((issue) => toDiagnostic(issue));
   diagnosticsCollection.set(document.uri, diagnostics);
@@ -157,6 +159,46 @@ function lintDocument(document: vscode.TextDocument): void {
 
 function isTargetDocument(document: vscode.TextDocument): boolean {
   return document.languageId === "openplanet-angelscript";
+}
+
+function buildRunOptions(document: vscode.TextDocument): LinterRunOptions {
+  const documentPath = document.uri.scheme === "file" ? document.uri.fsPath : undefined;
+  const workspaceRoot = document.uri.scheme === "file"
+    ? vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath
+    : undefined;
+  return {
+    documentPath,
+    workspaceRoot,
+    infoTomlText: documentPath ? readNearestInfoToml(documentPath, workspaceRoot) : undefined
+  };
+}
+
+function readNearestInfoToml(
+  documentPath: string,
+  workspaceRoot: string | undefined
+): string | undefined {
+  let current = path.dirname(documentPath);
+  const stopAt = workspaceRoot ? path.resolve(workspaceRoot) : undefined;
+
+  while (true) {
+    const candidate = path.join(current, "info.toml");
+    try {
+      if (fs.existsSync(candidate)) {
+        return fs.readFileSync(candidate, "utf8");
+      }
+    } catch {
+      return undefined;
+    }
+
+    if (stopAt && path.resolve(current).toLowerCase() === stopAt.toLowerCase()) {
+      return undefined;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
+  }
 }
 
 function provideLintCodeActions(
