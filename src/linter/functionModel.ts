@@ -201,7 +201,6 @@ const keywordSet = new Set<string>([
   "typedef",
   "funcdef",
   "import",
-  "from",
   "const",
   "final",
   "override",

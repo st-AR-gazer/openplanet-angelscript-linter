@@ -312,6 +312,25 @@ function testNoUnusedParamsStillFlagsUntouchedOutParams(): void {
   );
 }
 
+function testNoUnusedParamsTreatsContextualFromParameterAsUsed(): void {
+  const issues = runCase(
+    "unused-params-contextual-from",
+    [
+      "vec4 LerpColor(const vec4 &in from, const vec4 &in to, float factor) {",
+      "  factor = Math::Clamp(factor, 0.0f, 1.0f);",
+      "  return Math::Lerp(from, to, factor);",
+      "}"
+    ].join("\n"),
+    (settings) => enableOnly(settings, ["noUnusedParams"])
+  );
+
+  assert.equal(
+    countRule(issues, "noUnusedParams"),
+    0,
+    'Expected contextual parameter name "from" to be parsed and recognized as used.'
+  );
+}
+
 function testNoShadowing(): void {
   const issues = runCase(
     "shadowing",
@@ -1652,6 +1671,7 @@ function main(): void {
   testUnusedLocalsAndParamsAndFixes();
   testNoUnusedParamsTreatsWrittenOutParamsAsUsed();
   testNoUnusedParamsStillFlagsUntouchedOutParams();
+  testNoUnusedParamsTreatsContextualFromParameterAsUsed();
   testNoShadowing();
   testNoShadowingAllowsSequentialForLoopVariables();
   testNoShadowingStillFlagsNestedForLoopVariables();
